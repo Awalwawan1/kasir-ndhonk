@@ -1,47 +1,276 @@
 <!DOCTYPE html>
-<html>
+<html lang="id">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POS TOKO N-Dhonk</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #FFF9C4; color: #4E342E; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .hide-scroll::-webkit-scrollbar { display: none; }
+        .notif-center { top: 50%; left: 50%; transform: translate(-50%, -50%); }
+    </style>
 </head>
-<body class="bg-[#FFF9C4] p-4 flex justify-center">
-    <div class="bg-white p-6 rounded-3xl shadow-xl w-full max-w-sm">
-        <h1 class="text-center font-bold text-2xl text-[#4E342E] mb-6">TOKO N-Dhonk</h1>
+<body class="h-screen flex flex-col overflow-hidden">
+
+    <header class="bg-gray-900 text-white p-4 flex justify-between items-center shadow-md z-10">
+        <div>
+            <h1 class="text-xl font-bold text-[#FFD54F]">TOKO N-Dhonk</h1>
+            <p class="text-xs text-gray-300" id="clock">Memuat Waktu...</p>
+        </div>
+        <div class="flex gap-2 bg-gray-800 p-1 rounded-lg">
+            <button onclick="switchMode('Nasi Kuning')" id="tab-nasi" class="px-4 py-2 bg-[#FF9800] text-white rounded-md font-bold text-sm transition">Nasi Kuning</button>
+            <button onclick="switchMode('Sembako')" id="tab-sembako" class="px-4 py-2 text-gray-300 rounded-md font-bold text-sm transition">Sembako</button>
+        </div>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden">
         
-        <select id="jenis" class="w-full mb-3 p-3 border rounded-xl">
-            <option value="Nasi Kuning">Nasi Kuning</option>
-            <option value="Sembako">Sembako</option>
-        </select>
-        <select id="kategori" class="w-full mb-3 p-3 border rounded-xl">
-            <option value="Tunai">Tunai</option>
-            <option value="QRIS">QRIS</option>
-        </select>
-        <input id="item" placeholder="Nama Barang" class="w-full mb-3 p-3 border rounded-xl">
-        <input id="total" type="number" placeholder="Total Harga" class="w-full mb-3 p-3 border rounded-xl">
-        
-        <button onclick="kirimData()" class="w-full bg-[#FF9800] text-white py-4 rounded-xl font-bold">SIMPAN</button>
+        <main class="flex-1 p-6 overflow-y-auto hide-scroll">
+            <h2 id="kategori-title" class="text-xl font-bold mb-4 uppercase text-[#FF9800]">Menu Nasi Kuning</h2>
+            <div id="product-grid" class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                </div>
+        </main>
+
+        <aside class="w-96 bg-white border-l border-yellow-200 shadow-xl flex flex-col z-10">
+            <div class="bg-gray-900 text-white p-6 rounded-bl-3xl">
+                <p class="text-xs text-gray-400 font-bold mb-1 tracking-wider">TOTAL NOTA</p>
+                <h2 class="text-4xl font-bold text-right" id="display-total">Rp 0</h2>
+            </div>
+
+            <div class="flex-1 p-4 overflow-y-auto hide-scroll bg-gray-50 border-b border-gray-100" id="cart-items">
+                <p class="text-center text-gray-400 text-sm mt-10">Keranjang Kosong</p>
+            </div>
+
+            <div class="p-6 bg-white space-y-4">
+                <div class="flex gap-2">
+                    <button onclick="setPayment('Tunai')" id="btn-tunai" class="flex-1 py-3 border-2 border-[#FF9800] bg-orange-50 text-[#FF9800] font-bold rounded-xl transition">💵 TUNAI</button>
+                    <button onclick="setPayment('QRIS')" id="btn-qris" class="flex-1 py-3 border-2 border-gray-200 text-gray-500 font-bold rounded-xl transition">📱 QRIS</button>
+                </div>
+
+                <div id="area-kembalian" class="space-y-2">
+                    <label class="text-xs font-bold text-gray-500">NOMINAL UANG DITERIMA (Rp)</label>
+                    <input type="number" id="input-uang" onkeyup="hitungKembalian()" placeholder="0" class="w-full p-3 bg-gray-100 rounded-xl outline-none focus:ring-2 ring-orange-300 font-bold text-lg">
+                    
+                    <div class="flex justify-between text-sm font-bold pt-2">
+                        <span class="text-gray-600">Kembalian:</span>
+                        <span id="display-kembalian" class="text-green-600">Rp 0</span>
+                    </div>
+                </div>
+
+                <button onclick="prosesTransaksi()" id="btn-bayar" class="w-full bg-[#FF9800] hover:bg-orange-600 text-white py-4 rounded-xl font-bold text-lg shadow-lg transition transform hover:scale-[1.02]">
+                    BAYAR SEKARANG
+                </button>
+            </div>
+        </aside>
     </div>
 
-    <div id="notif" class="hidden fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-green-500 text-white p-6 rounded-2xl">
-        Transaksi Berhasil!
+    <div id="notif" class="hidden fixed notif-center bg-green-500 text-white px-10 py-8 rounded-3xl shadow-2xl text-center z-50">
+        <div class="text-5xl mb-2">✅</div>
+        <h3 class="text-2xl font-bold">Transaksi Sukses!</h3>
+        <p class="text-green-100">Data telah tersimpan ke laporan.</p>
     </div>
 
     <script>
-        function kirimData() {
-            const url = "https://script.google.com/macros/s/AKfycbxVpeTuF-nDkFiINcY6g8zNs96x0XsHHaLrYTZUSh7f7V7j2DUUHZu7Ude7IWqytcP0/exec"; // Ganti dengan URL dari Deployment Apps Script
-            const data = {
-                jenis: document.getElementById('jenis').value,
-                kategori: document.getElementById('kategori').value,
-                item: document.getElementById('item').value,
-                total: document.getElementById('total').value
+        // GANTI DENGAN URL WEB APP ANDA
+        const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxVpeTuF-nDkFiINcY6g8zNs96x0XsHHaLrYTZUSh7f7V7j2DUUHZu7Ude7IWqytcP0/exec"; 
+
+        // Database Produk
+        const database = {
+            'Nasi Kuning': [
+                { id: 'n1', nama: 'Nasi Kuning Telur', harga: 10000 },
+                { id: 'n2', nama: 'Nasi Kuning Ayam', harga: 13000 },
+                { id: 'n3', nama: 'Nasi Kuning Ayam Telur', harga: 15000 },
+                { id: 'n4', nama: 'Ekstra Telur Bulat', harga: 3000 },
+                { id: 'n5', nama: 'Ekstra Ayam Goreng', harga: 4000 },
+                { id: 'n6', nama: 'Ekstra Tahu/Tempe', harga: 1000 },
+            ],
+            'Sembako': [
+                { id: 's1', nama: 'Beras Premium 5kg', harga: 65000 },
+                { id: 's2', nama: 'Telur Ayam 1 Rak', harga: 55000 },
+                { id: 's3', nama: 'Minyak Goreng 1L', harga: 15000 },
+                { id: 's4', nama: 'Gula Pasir 1kg', harga: 17000 },
+                { id: 's5', nama: 'Indomie Goreng', harga: 3000 },
+            ]
+        };
+
+        let modeAktif = 'Nasi Kuning';
+        let metodeBayar = 'Tunai';
+        let keranjang = {}; 
+
+        // Fungsi Waktu (Jam Sudut Kiri Atas)
+        setInterval(() => {
+            document.getElementById('clock').innerText = new Date().toLocaleString("id-ID", {timeZone: "Asia/Makassar"}) + " WITA";
+        }, 1000);
+
+        // Render Produk ke Layar
+        function renderProduk() {
+            const grid = document.getElementById('product-grid');
+            grid.innerHTML = '';
+            document.getElementById('kategori-title').innerText = "Kategori: " + modeAktif;
+
+            database[modeAktif].forEach(item => {
+                const qty = keranjang[item.id] ? keranjang[item.id].qty : 0;
+                grid.innerHTML += `
+                    <div class="bg-white p-4 rounded-2xl shadow-sm border border-yellow-100 flex flex-col justify-between">
+                        <div>
+                            <h3 class="font-bold text-sm mb-1">${item.nama}</h3>
+                            <p class="text-[#FF9800] font-bold text-sm mb-3">Rp ${item.harga.toLocaleString('id-ID')}</p>
+                        </div>
+                        <div class="flex items-center justify-between bg-gray-50 rounded-lg p-1 border">
+                            <button onclick="updateCart('${item.id}', '${item.nama}', ${item.harga}, -1)" class="w-8 h-8 flex items-center justify-center bg-white border shadow-sm rounded-md font-bold text-gray-500 hover:bg-gray-100">-</button>
+                            <span class="font-bold text-lg w-8 text-center">${qty}</span>
+                            <button onclick="updateCart('${item.id}', '${item.nama}', ${item.harga}, 1)" class="w-8 h-8 flex items-center justify-center bg-[#FF9800] text-white rounded-md font-bold shadow hover:bg-orange-600">+</button>
+                        </div>
+                    </div>
+                `;
+            });
+            renderCart();
+        }
+
+        // Tambah/Kurang Item di Keranjang
+        function updateCart(id, nama, harga, qtyChange) {
+            if (!keranjang[id]) {
+                keranjang[id] = { nama, harga, qty: 0 };
+            }
+            keranjang[id].qty += qtyChange;
+            if (keranjang[id].qty <= 0) delete keranjang[id];
+            
+            renderProduk(); // Re-render untuk update angka qty di kartu produk
+        }
+
+        // Tampilkan Keranjang di Sidebar Kanan
+        function renderCart() {
+            const cartContainer = document.getElementById('cart-items');
+            cartContainer.innerHTML = '';
+            let total = 0;
+
+            const keys = Object.keys(keranjang);
+            if(keys.length === 0) {
+                cartContainer.innerHTML = `<p class="text-center text-gray-400 text-sm mt-10">Keranjang Kosong</p>`;
+            } else {
+                keys.forEach(id => {
+                    const item = keranjang[id];
+                    const subtotal = item.harga * item.qty;
+                    total += subtotal;
+                    cartContainer.innerHTML += `
+                        <div class="flex justify-between items-center mb-3 bg-white p-3 rounded-lg shadow-sm border border-gray-100">
+                            <div>
+                                <p class="font-bold text-sm text-gray-800">${item.nama}</p>
+                                <p class="text-xs text-gray-500">${item.qty} x Rp ${item.harga.toLocaleString('id-ID')}</p>
+                            </div>
+                            <p class="font-bold text-[#FF9800]">Rp ${subtotal.toLocaleString('id-ID')}</p>
+                        </div>
+                    `;
+                });
+            }
+            document.getElementById('display-total').innerText = 'Rp ' + total.toLocaleString('id-ID');
+            document.getElementById('display-total').dataset.val = total;
+            hitungKembalian();
+        }
+
+        // Hitung Otomatis Kembalian
+        function hitungKembalian() {
+            const total = parseInt(document.getElementById('display-total').dataset.val) || 0;
+            const uang = parseInt(document.getElementById('input-uang').value) || 0;
+            let kembali = uang - total;
+            
+            if (metodeBayar === 'QRIS' || kembali < 0) kembali = 0;
+            document.getElementById('display-kembalian').innerText = 'Rp ' + kembali.toLocaleString('id-ID');
+        }
+
+        // Ganti Tab Mode (Nasi / Sembako)
+        function switchMode(mode) {
+            modeAktif = mode;
+            keranjang = {}; // Kosongkan keranjang jika ganti jenis toko
+            document.getElementById('input-uang').value = '';
+            
+            // UI Button Switch
+            document.getElementById('tab-nasi').className = mode === 'Nasi Kuning' ? "px-4 py-2 bg-[#FF9800] text-white rounded-md font-bold text-sm transition" : "px-4 py-2 text-gray-300 rounded-md font-bold text-sm transition";
+            document.getElementById('tab-sembako').className = mode === 'Sembako' ? "px-4 py-2 bg-[#FF9800] text-white rounded-md font-bold text-sm transition" : "px-4 py-2 text-gray-300 rounded-md font-bold text-sm transition";
+            
+            renderProduk();
+        }
+
+        // Ganti Pembayaran
+        function setPayment(metode) {
+            metodeBayar = metode;
+            const bTunai = document.getElementById('btn-tunai');
+            const bQris = document.getElementById('btn-qris');
+            const areaUang = document.getElementById('area-kembalian');
+
+            if(metode === 'Tunai') {
+                bTunai.className = "flex-1 py-3 border-2 border-[#FF9800] bg-orange-50 text-[#FF9800] font-bold rounded-xl transition";
+                bQris.className = "flex-1 py-3 border-2 border-gray-200 text-gray-500 font-bold rounded-xl transition";
+                areaUang.style.display = 'block';
+            } else {
+                bQris.className = "flex-1 py-3 border-2 border-[#FF9800] bg-orange-50 text-[#FF9800] font-bold rounded-xl transition";
+                bTunai.className = "flex-1 py-3 border-2 border-gray-200 text-gray-500 font-bold rounded-xl transition";
+                areaUang.style.display = 'none';
+                document.getElementById('input-uang').value = '';
+            }
+            hitungKembalian();
+        }
+
+        // Kirim Data ke API Apps Script
+        function prosesTransaksi() {
+            const keys = Object.keys(keranjang);
+            if (keys.length === 0) return alert("Keranjang masih kosong!");
+
+            const total = parseInt(document.getElementById('display-total').dataset.val);
+            const diterima = metodeBayar === 'QRIS' ? total : (parseInt(document.getElementById('input-uang').value) || 0);
+            
+            if (metodeBayar === 'Tunai' && diterima < total) {
+                return alert("Uang yang diterima kurang!");
+            }
+
+            // Susun detail item menjadi string agar mudah dibaca di Excel/Sheets
+            let stringItem = keys.map(id => `${keranjang[id].nama} (${keranjang[id].qty}x)`).join(', ');
+            let kembalian = diterima - total;
+
+            const payload = {
+                jenis: modeAktif,
+                metode_bayar: metodeBayar,
+                detail_item: stringItem,
+                total: total,
+                diterima: diterima,
+                kembalian: kembalian
             };
 
-            fetch(url, { method: 'POST', body: JSON.stringify(data) })
-                .then(() => {
-                    const n = document.getElementById('notif');
-                    n.classList.remove('hidden');
-                    setTimeout(() => n.classList.add('hidden'), 2000);
-                });
+            // Loading state
+            const btn = document.getElementById('btn-bayar');
+            btn.innerText = "MEMPROSES...";
+            btn.disabled = true;
+
+            fetch(APPS_SCRIPT_URL, {
+                method: 'POST',
+                body: JSON.stringify(payload)
+            })
+            .then(res => res.json())
+            .then(res => {
+                // Tampilkan notifikasi center
+                const notif = document.getElementById('notif');
+                notif.classList.remove('hidden');
+                
+                // Reset setelah 2 detik
+                setTimeout(() => {
+                    notif.classList.add('hidden');
+                    keranjang = {};
+                    document.getElementById('input-uang').value = '';
+                    btn.innerText = "BAYAR SEKARANG";
+                    btn.disabled = false;
+                    renderProduk();
+                }, 2000);
+            })
+            .catch(err => {
+                alert("Gagal tersambung ke server. Pastikan URL Apps Script benar.");
+                btn.innerText = "BAYAR SEKARANG";
+                btn.disabled = false;
+            });
         }
+
+        // Inisialisasi Pertama
+        renderProduk();
     </script>
 </body>
 </html>
