@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-[#FFF9C4] p-4 flex justify-center">
+    <div class="bg-white p-6 rounded-3xl shadow-xl w-full max-w-sm">
+        <h1 class="text-center font-bold text-2xl text-[#4E342E] mb-6">TOKO N-Dhonk</h1>
+        
+        <select id="jenis" class="w-full mb-3 p-3 border rounded-xl">
+            <option value="Nasi Kuning">Nasi Kuning</option>
+            <option value="Sembako">Sembako</option>
+        </select>
+        <select id="kategori" class="w-full mb-3 p-3 border rounded-xl">
+            <option value="Tunai">Tunai</option>
+            <option value="QRIS">QRIS</option>
+        </select>
+        <input id="item" placeholder="Nama Barang" class="w-full mb-3 p-3 border rounded-xl">
+        <input id="total" type="number" placeholder="Total Harga" class="w-full mb-3 p-3 border rounded-xl">
+        
+        <button onclick="kirimData()" class="w-full bg-[#FF9800] text-white py-4 rounded-xl font-bold">SIMPAN</button>
+    </div>
+
+    <div id="notif" class="hidden fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-green-500 text-white p-6 rounded-2xl">
+        Transaksi Berhasil!
+    </div>
+
+    <script>
+        function kirimData() {
+            const url = "https://script.google.com/macros/s/AKfycbxVpeTuF-nDkFiINcY6g8zNs96x0XsHHaLrYTZUSh7f7V7j2DUUHZu7Ude7IWqytcP0/exec"; // Ganti dengan URL dari Deployment Apps Script
+            const data = {
+                jenis: document.getElementById('jenis').value,
+                kategori: document.getElementById('kategori').value,
+                item: document.getElementById('item').value,
+                total: document.getElementById('total').value
+            };
+
+            fetch(url, { method: 'POST', body: JSON.stringify(data) })
+                .then(() => {
+                    const n = document.getElementById('notif');
+                    n.classList.remove('hidden');
+                    setTimeout(() => n.classList.add('hidden'), 2000);
+                });
+        }
+    </script>
+</body>
+</html>
