@@ -647,7 +647,7 @@
             }
         }
 
-        function prosesLaporanHarian() {
+       function prosesLaporanHarian() {
             const filterTglInput = document.getElementById("filter-tanggal");
             if(!filterTglInput) return;
             
@@ -741,7 +741,6 @@
                     }
                 });
 
-                // PERBAIKAN: Menghindari baris rincian ganda (Prioritas masuk Sembako jika ada campuran)
                 if(adaSembako) {
                     rincianSembakoBaris.push(htmlBarisDetail);
                 } else if(adaMenuLain) {
@@ -809,12 +808,18 @@
             setTeks("total-sembako", "Rp " + (tSembako + qrSembako).toLocaleString('id-ID'));
             setHtml("body-rincian-sembako", rincianSembakoBaris.join('') || `<tr><td colspan="4" class="p-4 text-center text-slate-400 italic">Kosong</td></tr>`);
 
-            // --- GRAND TOTAL GLOBAL AKUMULASI ---
+            // --- GRAND TOTAL GLOBAL AKUMULASI PERBAIKAN ---
             let totalQtyUtamaGlobal = qtyPagiUtama + qtyMalamUtama;
             let totalQtyLaukGlobal = qtyPagiLauk + qtyMalamLauk;
             let akumulasiTunaiGlobal = tPagi + tMalam + tSembako;
             let akumulasiQrisGlobal = qrPagi + qrMalam + qrSembako;
             let omsetTotalHariIni = akumulasiTunaiGlobal + akumulasiQrisGlobal;
+
+            // Pastikan Anda memiliki elemen dengan ID 'grand-qty-sembako' di HTML Anda jika ingin memisahkan Qty sembako global
+            const elGrandSembako = document.getElementById("grand-qty-sembako");
+            if (elGrandSembako) {
+                elGrandSembako.innerText = qtySembakoTotal;
+            }
 
             setTeks("grand-qty-utama", totalQtyUtamaGlobal);
             setTeks("grand-qty-lauk", totalQtyLaukGlobal);
@@ -822,7 +827,6 @@
             setTeks("grand-qris-gabungan", "Rp " + akumulasiQrisGlobal.toLocaleString('id-ID'));
             setTeks("grand-total-hari-ini", "Rp " + omsetTotalHariIni.toLocaleString('id-ID'));
         }
-
         function bayarSekarang() {
             if(grandTotal === 0) { triggerNotif("Isi dulu item belanjaan kasir!", "error"); return; }
             if(caraBayar === "TUNAI" && cashDiterima < grandTotal) { triggerNotif("Uang cash kurang!", "error"); return; }
