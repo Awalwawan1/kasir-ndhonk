@@ -815,14 +815,17 @@
             let akumulasiQrisGlobal = qrPagi + qrMalam + qrSembako;
             let omsetTotalHariIni = akumulasiTunaiGlobal + akumulasiQrisGlobal;
 
-            // Pastikan Anda memiliki elemen dengan ID 'grand-qty-sembako' di HTML Anda jika ingin memisahkan Qty sembako global
+            // Memperbarui teks kuantitas per kategori
+            setTeks("grand-qty-utama", totalQtyUtamaGlobal);
+            setTeks("grand-qty-lauk", totalQtyLaukGlobal);
+            
+            // PERBAIKAN: Menampilkan Qty Sembako pada elemen 'grand-qty-sembako'
             const elGrandSembako = document.getElementById("grand-qty-sembako");
             if (elGrandSembako) {
                 elGrandSembako.innerText = qtySembakoTotal;
             }
 
-            setTeks("grand-qty-utama", totalQtyUtamaGlobal);
-            setTeks("grand-qty-lauk", totalQtyLaukGlobal);
+            // Memperbarui akumulasi nominal uang
             setTeks("grand-tunai-gabungan", "Rp " + akumulasiTunaiGlobal.toLocaleString('id-ID'));
             setTeks("grand-qris-gabungan", "Rp " + akumulasiQrisGlobal.toLocaleString('id-ID'));
             setTeks("grand-total-hari-ini", "Rp " + omsetTotalHariIni.toLocaleString('id-ID'));
