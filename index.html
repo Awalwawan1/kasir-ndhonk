@@ -697,8 +697,11 @@
         if(!isWaktuPagi && !isWaktuMalam) return;
 
         let metodeStr = tx.metode ? tx.metode.toString().toUpperCase() : "TUNAI";
-        let itemRaw = tx.item ? tx.item.toString() : "";
-        let bagianItem = itemRaw.split(",");
+let itemRaw = tx.item ? tx.item.toString() : "";
+
+// Logika pemisah ganda: baca " | " untuk transaksi baru, baca "," untuk transaksi lama
+let pemisah = itemRaw.includes(" | ") ? " | " : ",";
+let bagianItem = itemRaw.split(pemisah);
         
         let badgeMetode = metodeStr === "QRIS" 
             ? `<span class="px-1 text-[9px] font-bold bg-sky-50 text-sky-600 border border-sky-100">QRIS</span>`
@@ -844,9 +847,11 @@
             for(let key in orderan) { if((orderan[key] || 0) > 0) rincian.push(`${key} (${orderan[key]}x)`); }
 
             dataTransaksiTunda = {
-                id: "TX-" + Math.floor(Math.random() * 90000 + 10000),
-                item: rincian.join(", "),
-                total: grandTotal,
+                dataTransaksiTunda = {
+    id: "TX-" + Math.floor(Math.random() * 90000 + 10000),
+    item: rincian.join(" | "), // Menggunakan pemisah garis lurus
+    total: grandTotal,
+    // ...
                 metode: caraBayar,
                 bayar: caraBayar === "TUNAI" ? cashDiterima : grandTotal,
                 kembalian: caraBayar === "TUNAI" ? Math.max(0, cashDiterima - grandTotal) : 0
