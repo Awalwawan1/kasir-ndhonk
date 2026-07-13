@@ -98,23 +98,37 @@
         <!-- ================= PAGE 1: KASIR UTAMA ================= -->
         <section id="page-kasir" class="lg:col-span-12 grid grid-cols-1 lg:grid-cols-12 gap-4 w-full">
             
-            <!-- Grid Menu Berdampingan Kiri-Kanan di HP -->
-            <div class="lg:col-span-7 grid grid-cols-2 gap-3 items-start">
-                <!-- Kolom Kiri: Menu Utama -->
-                <div class="bg-white rounded-2xl p-3 shadow-sm border border-slate-200/60 min-h-[300px]">
-                    <h2 class="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2.5 flex items-center"><span class="mr-1">🍛</span>Menu Utama</h2>
-                    <div id="kolom-utama" class="space-y-3 divide-y divide-slate-100">
-                        <!-- Render Otomatis -->
-                    </div>
-                </div>
-                <!-- Kolom Kanan: Lauk Pauk -->
-                <div class="bg-white rounded-2xl p-3 shadow-sm border border-slate-200/60 min-h-[300px]">
-                    <h2 class="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2.5 flex items-center"><span class="mr-1">🍗</span> Lauk</h2>
-                    <div id="kolom-lauk" class="space-y-3 divide-y divide-slate-100">
-                        <!-- Render Otomatis -->
-                    </div>
-                </div>
-            </div>
+           <!-- Grid Menu Berdampingan 2 Kolom (Kiri & Kanan) -->
+<div class="lg:col-span-7 grid grid-cols-2 gap-3 items-start">
+  
+  <!-- KOLOM KIRI: Menu Utama & Sembako -->
+  <div class="space-y-3">
+    <!-- Sub-Kolom: Menu Utama -->
+    <div class="bg-white rounded-2xl p-3 shadow-sm border border-slate-200/60 min-h-[150px]">
+      <h2 class="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2.5 flex items-center"><span class="mr-1">🍛</span>Menu Utama</h2>
+      <div id="kolom-utama" class="space-y-3 divide-y divide-slate-100">
+        <!-- Render Otomatis -->
+      </div>
+    </div>
+
+    <!-- Sub-Kolom: Sembako (Tepat di bawah Menu Utama) -->
+    <div class="bg-white rounded-2xl p-3 shadow-sm border border-slate-200/60 min-h-[150px]">
+      <h2 class="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2.5 flex items-center"><span class="mr-1">🌾</span>Sembako</h2>
+      <div id="kolom-sembako" class="space-y-3 divide-y divide-slate-100">
+        <!-- Render Otomatis -->
+      </div>
+    </div>
+  </div>
+
+  <!-- KOLOM KANAN: Lauk Pauk (Tetap di Kanan) -->
+  <div class="bg-white rounded-2xl p-3 shadow-sm border border-slate-200/60 min-h-[300px]">
+    <h2 class="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2.5 flex items-center"><span class="mr-1">🍗</span> Lauk</h2>
+    <div id="kolom-lauk" class="space-y-3 divide-y divide-slate-100">
+      <!-- Render Otomatis -->
+    </div>
+  </div>
+
+</div>
 
             <!-- Bagian Nota Pembayaran Sisi Kanan -->
             <div class="lg:col-span-5 space-y-3">
@@ -444,16 +458,28 @@ function setDefaultTanggal() {
         }
 
         function renderMenu() {
-            let htmlUtama = ""; let htmlLauk = "";
-            itemMenu.forEach(item => {
-                if(item.kategori === "lauk") { htmlLauk += createItemHtml(item); } 
-                else { htmlUtama += createItemHtml(item); }
-            });
-            const kolUtama = document.getElementById("kolom-utama");
-            const kolLauk = document.getElementById("kolom-lauk");
-            if(kolUtama) kolUtama.innerHTML = htmlUtama || "<p class='text-[10px] text-slate-400 italic'>Kosong</p>";
-            if(kolLauk) kolLauk.innerHTML = htmlLauk || "<p class='text-[10px] text-slate-400 italic'>Kosong</p>";
-        }
+  let htmlUtama = "";
+  let htmlLauk = "";
+  let htmlSembako = ""; // Tambahkan penampung sembako
+
+  itemMenu.forEach(item => {
+    if (item.kategori === "lauk") {
+      htmlLauk += createItemHtml(item);
+    } else if (item.kategori === "sembako") { // Cek jika kategori adalah sembako
+      htmlSembako += createItemHtml(item);
+    } else {
+      htmlUtama += createItemHtml(item);
+    }
+  });
+
+  const kolUtama = document.getElementById("kolom-utama");
+  const kolLauk = document.getElementById("kolom-lauk");
+  const kolSembako = document.getElementById("kolom-sembako"); // Ambil elemen sembako
+
+  if (kolUtama) kolUtama.innerHTML = htmlUtama || "<p class='text-[10px] text-slate-400 italic'>Kosong</p>";
+  if (kolLauk) kolLauk.innerHTML = htmlLauk || "<p class='text-[10px] text-slate-400 italic'>Kosong</p>";
+  if (kolSembako) kolSembako.innerHTML = htmlSembako || "<p class='text-[10px] text-slate-400 italic'>Kosong</p>";
+}
 
         function ubahQty(nama, delta) {
             orderan[nama] = Math.max(0, (orderan[nama] || 0) + delta);
