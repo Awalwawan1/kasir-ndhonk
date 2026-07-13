@@ -749,7 +749,10 @@ function prosesLaporanHarian() {
             let cocokQty = bersihkan.match(/(.+)\s\((\d+)x\)/);
             if(cocokQty) { namaMenu = cocokQty[1].trim(); qtyMenu = parseInt(cocokQty[2], 10); }
 
-            let matchMenu = itemMenu.find(m => m.nama === namaMenu);
+            // PERBAIKAN BUG: Hilangkan escape karakter backlash jika terbawa di string transaksi
+            let namaMenuBersih = namaMenu.replace(/\\'/g, "'");
+
+            let matchMenu = itemMenu.find(m => m.nama === namaMenuBersih);
             let kategoriMenu = matchMenu ? (matchMenu.kategori || "utama") : "utama";
             kategoriMenu = kategoriMenu.toString().toLowerCase().trim();
 
@@ -758,15 +761,15 @@ function prosesLaporanHarian() {
 
             if(kategoriMenu === "sembako") {
                 adaSembako = true;
-                if(!rekapSembako[namaMenu]) { rekapSembako[namaMenu] = { nama: namaMenu, qty: 0, tunai: 0, qris: 0, harga: hargaBawaan, kategori: kategoriMenu }; }
-                rekapSembako[namaMenu].qty += qtyMenu;
-                if(metodeStr === "QRIS") { rekapSembako[namaMenu].qris += subTotalItem; } else { rekapSembako[namaMenu].tunai += subTotalItem; }
+                if(!rekapSembako[namaMenuBersih]) { rekapSembako[namaMenuBersih] = { nama: namaMenuBersih, qty: 0, tunai: 0, qris: 0, harga: hargaBawaan, kategori: kategoriMenu }; }
+                rekapSembako[namaMenuBersih].qty += qtyMenu;
+                if(metodeStr === "QRIS") { rekapSembako[namaMenuBersih].qris += subTotalItem; } else { rekapSembako[namaMenuBersih].tunai += subTotalItem; }
             } else {
                 adaMenuLain = true;
                 let targetRekap = isWaktuPagi ? rekapPagi : rekapMalam;
-                if(!targetRekap[namaMenu]) { targetRekap[namaMenu] = { nama: namaMenu, qty: 0, tunai: 0, qris: 0, harga: hargaBawaan, kategori: kategoriMenu }; }
-                targetRekap[namaMenu].qty += qtyMenu;
-                if(metodeStr === "QRIS") { targetRekap[namaMenu].qris += subTotalItem; } else { targetRekap[namaMenu].tunai += subTotalItem; }
+                if(!targetRekap[namaMenuBersih]) { targetRekap[namaMenuBersih] = { nama: namaMenuBersih, qty: 0, tunai: 0, qris: 0, harga: hargaBawaan, kategori: kategoriMenu }; }
+                targetRekap[namaMenuBersih].qty += qtyMenu;
+                if(metodeStr === "QRIS") { targetRekap[namaMenuBersih].qris += subTotalItem; } else { targetRekap[namaMenuBersih].tunai += subTotalItem; }
             }
         });
 
@@ -777,6 +780,9 @@ function prosesLaporanHarian() {
             else rincianMalamBaris.push(htmlBarisDetail);
         }
     });
+
+    const setTeks = (id, txt) => { const el = document.getElementById(id); if(el) el.innerText = txt; };
+    const setHtml = (id, html) => { const el = document.getElementById(id); if(el) el.innerHTML = html; };
 
     // --- RENDER REKAP & TOTAL PAGI ---
     let htmlPagi = ""; let tPagi = 0, qrPagi = 0; let qtyPagiUtama = 0; let qtyPagiLauk = 0;
@@ -789,17 +795,14 @@ function prosesLaporanHarian() {
             htmlPagi += `<tr class="border-b border-slate-100"><td class="p-2 text-slate-800 font-bold">${r.nama}</td><td class="p-2 text-center">${r.qty}</td><td class="p-2 text-right text-emerald-600">Rp ${r.tunai.toLocaleString('id-ID')}</td><td class="p-2 text-right text-sky-600">Rp ${r.qris.toLocaleString('id-ID')}</td></tr>`;
         }
     }
-    document.getElementById("body-tabel-pagi").innerHTML = htmlPagi || `<tr><td colspan="4" class="p-4 text-center text-slate-400 italic text-[11px]">Kosong</td></tr>`;
-    
-    // Gunakan fungsi bawaan aman untuk mengantisipasi elemen tidak ketemu
-    const setTeks = (id, txt) => { const el = document.getElementById(id); if(el) el.innerText = txt; };
+    setHtml("body-tabel-pagi", htmlPagi || `<tr><td colspan="4" class="p-4 text-center text-slate-400 italic text-[11px]">Kosong</td></tr>`);
     
     setTeks("qty-pagi-utama", qtyPagiUtama);
     setTeks("qty-pagi-lauk", qtyPagiLauk);
     setTeks("tunai-pagi", "Rp " + tPagi.toLocaleString('id-ID'));
     setTeks("qris-pagi", "Rp " + qrPagi.toLocaleString('id-ID'));
     setTeks("total-pagi", "Rp " + (tPagi + qrPagi).toLocaleString('id-ID'));
-    if(document.getElementById("body-rincian-pagi")) document.getElementById("body-rincian-pagi").innerHTML = rincianPagiBaris.join('') || `<tr><td colspan="4" class="p-4 text-center text-slate-400 italic">Kosong</td></tr>`;
+    setHtml("body-rincian-pagi", rincianPagiBaris.join('') || `<tr><td colspan="4" class="p-4 text-center text-slate-400 italic">Kosong</td></tr>`);
 
     // --- RENDER REKAP & TOTAL MALAM ---
     let htmlMalam = ""; let tMalam = 0, qrMalam = 0; let qtyMalamUtama = 0; let qtyMalamLauk = 0;
@@ -812,13 +815,13 @@ function prosesLaporanHarian() {
             htmlMalam += `<tr class="border-b border-slate-100"><td class="p-2 text-slate-800 font-bold">${r.nama}</td><td class="p-2 text-center">${r.qty}</td><td class="p-2 text-right text-emerald-600">Rp ${r.tunai.toLocaleString('id-ID')}</td><td class="p-2 text-right text-sky-600">Rp ${r.qris.toLocaleString('id-ID')}</td></tr>`;
         }
     }
-    document.getElementById("body-tabel-malam").innerHTML = htmlMalam || `<tr><td colspan="4" class="p-4 text-center text-slate-400 italic text-[11px]">Kosong</td></tr>`;
+    setHtml("body-tabel-malam", htmlMalam || `<tr><td colspan="4" class="p-4 text-center text-slate-400 italic text-[11px]">Kosong</td></tr>`);
     setTeks("qty-malam-utama", qtyMalamUtama);
     setTeks("qty-malam-lauk", qtyMalamLauk);
     setTeks("tunai-malam", "Rp " + tMalam.toLocaleString('id-ID'));
     setTeks("qris-malam", "Rp " + qrMalam.toLocaleString('id-ID'));
     setTeks("total-malam", "Rp " + (tMalam + qrMalam).toLocaleString('id-ID'));
-    if(document.getElementById("body-rincian-malam")) document.getElementById("body-rincian-malam").innerHTML = rincianMalamBaris.join('') || `<tr><td colspan="4" class="p-4 text-center text-slate-400 italic">Kosong</td></tr>`;
+    setHtml("body-rincian-malam", rincianMalamBaris.join('') || `<tr><td colspan="4" class="p-4 text-center text-slate-400 italic">Kosong</td></tr>`);
 
     // --- RENDER REKAP & TOTAL SEMBAKO (GABUNGAN) ---
     let htmlSembako = ""; let tSembako = 0, qrSembako = 0; let qtySembakoTotal = 0;
@@ -830,12 +833,12 @@ function prosesLaporanHarian() {
             htmlSembako += `<tr class="border-b border-slate-100"><td class="p-2 text-slate-800 font-bold">${r.nama}</td><td class="p-2 text-center">${r.qty}</td><td class="p-2 text-right text-emerald-600">Rp ${r.tunai.toLocaleString('id-ID')}</td><td class="p-2 text-right text-sky-600">Rp ${r.qris.toLocaleString('id-ID')}</td></tr>`;
         }
     }
-    document.getElementById("body-tabel-sembako").innerHTML = htmlSembako || `<tr><td colspan="4" class="p-4 text-center text-slate-400 italic text-[11px]">Kosong</td></tr>`;
+    setHtml("body-tabel-sembako", htmlSembako || `<tr><td colspan="4" class="p-4 text-center text-slate-400 italic text-[11px]">Kosong</td></tr>`);
     setTeks("qty-sembako-total", qtySembakoTotal);
     setTeks("tunai-sembako", "Rp " + tSembako.toLocaleString('id-ID'));
     setTeks("qris-sembako", "Rp " + qrSembako.toLocaleString('id-ID'));
     setTeks("total-sembako", "Rp " + (tSembako + qrSembako).toLocaleString('id-ID'));
-    if(document.getElementById("body-rincian-sembako")) document.getElementById("body-rincian-sembako").innerHTML = rincianSembakoBaris.join('') || `<tr><td colspan="4" class="p-4 text-center text-slate-400 italic">Kosong</td></tr>`;
+    setHtml("body-rincian-sembako", rincianSembakoBaris.join('') || `<tr><td colspan="4" class="p-4 text-center text-slate-400 italic">Kosong</td></tr>`);
 
     // --- GRAND TOTAL GLOBAL AKUMULASI ---
     let totalQtyUtamaGlobal = qtyPagiUtama + qtyMalamUtama;
