@@ -117,13 +117,15 @@
     </div>
   </div>
 
-  <!-- Sub-Kolom: Lauk Pauk (Pindah ke kiri, min-h jadi 150px) -->
-  <div class="bg-white rounded-2xl p-3 shadow-sm border border-slate-200/60 min-h-[150px]">
-    <h2 class="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2.5 flex items-center"><span class="mr-1">🍗</span> Lauk</h2>
-    <div id="kolom-lauk" class="space-y-3 divide-y divide-slate-100">
-      <!-- Render Otomatis -->
-    </div>
+ <!-- KOLOM KANAN / BAWAH: Lauk Pauk (Dibuat 2 Kolom) -->
+<div class="bg-white rounded-2xl p-3 shadow-sm border border-slate-200/60 min-h-[150px]">
+  <h2 class="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-2.5 flex items-center"><span class="mr-1">🍗</span> Lauk</h2>
+  
+  <!-- PERHATIKAN BAGIAN INI: Menggunakan grid dan grid-cols-2 -->
+  <div id="kolom-lauk" class="grid grid-cols-2 gap-2">
+    <!-- Render Otomatis -->
   </div>
+</div>
 
 </div>
 
