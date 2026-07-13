@@ -672,7 +672,7 @@ function prosesLaporanHarian() {
     let besok = new Date(malamMulai); besok.setDate(besok.getDate() + 1);
     let malamAkhir = new Date(besok); malamAkhir.setHours(5, 59, 59, 999);
 
-    // Inisialisasi Kontainer Data (Pagi, Malam, dan Sembako)
+    // Inisialisasi Kontainer Data
     let rekapPagi = {}; let rekapMalam = {}; let rekapSembako = {};
     let rincianPagiBaris = []; let rincianMalamBaris = []; let rincianSembakoBaris = [];
 
@@ -691,7 +691,7 @@ function prosesLaporanHarian() {
         let txDate = new Date(tx.tanggal);
         if(isNaN(txDate.getTime())) return;
 
-        // Tentukan Shift berdasarkan jam transaksi
+        // Cek kecocokan waktu shift
         let isWaktuPagi = (txDate >= pagiMulai && txDate <= pagiAkhir);
         let isWaktuMalam = (txDate >= malamMulai && txDate <= malamAkhir);
         if(!isWaktuPagi && !isWaktuMalam) return;
@@ -707,7 +707,6 @@ function prosesLaporanHarian() {
         let jamMenit = txDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false }).replace(/\./g, ':');
         let htmlBarisDetail = `<tr class="border-b border-slate-100"><td class="p-2 text-slate-400 font-medium">${jamMenit}</td><td class="p-2 text-slate-800 leading-tight max-w-[150px] break-words">${tx.item}</td><td class="p-2 text-center">${badgeMetode}</td><td class="p-2 text-right text-slate-700">Rp ${Number(tx.total).toLocaleString('id-ID')}</td></tr>`;
 
-        // Filter Pemisah Rincian Transaksi
         let adaSembako = false;
         let adaMenuLain = false;
 
@@ -738,7 +737,7 @@ function prosesLaporanHarian() {
             }
         });
 
-        // Masukkan Baris Rincian ke Tabel yang Sesuai
+        // Masukkan ke array rincian tampilan
         if(adaSembako) rincianSembakoBaris.push(htmlBarisDetail);
         if(adaMenuLain) {
             if(isWaktuPagi) rincianPagiBaris.push(htmlBarisDetail);
@@ -746,7 +745,7 @@ function prosesLaporanHarian() {
         }
     });
 
-    // --- HITUNG & RENDER REKAP PAGI ---
+    // --- RENDER REKAP & TOTAL PAGI ---
     let htmlPagi = ""; let tPagi = 0, qrPagi = 0; let qtyPagiUtama = 0; let qtyPagiLauk = 0;
     for(let key in rekapPagi) {
         let r = rekapPagi[key];
@@ -757,16 +756,19 @@ function prosesLaporanHarian() {
             htmlPagi += `<tr class="border-b border-slate-100"><td class="p-2 text-slate-800 font-bold">${r.nama}</td><td class="p-2 text-center">${r.qty}</td><td class="p-2 text-right text-emerald-600">Rp ${r.tunai.toLocaleString('id-ID')}</td><td class="p-2 text-right text-sky-600">Rp ${r.qris.toLocaleString('id-ID')}</td></tr>`;
         }
     }
-    const bTabelPagi = document.getElementById("body-tabel-pagi");
-    if(bTabelPagi) bTabelPagi.innerHTML = htmlPagi || `<tr><td colspan="4" class="p-4 text-center text-slate-400 italic text-[11px]">Kosong</td></tr>`;
-    safeSetText("qty-pagi-utama", qtyPagiUtama);
-    safeSetText("qty-pagi-lauk", qtyPagiLauk);
-    safeSetText("tunai-pagi", "Rp " + tPagi.toLocaleString('id-ID'));
-    safeSetText("qris-pagi", "Rp " + qrPagi.toLocaleString('id-ID'));
-    safeSetText("total-pagi", "Rp " + (tPagi + qrPagi).toLocaleString('id-ID'));
+    document.getElementById("body-tabel-pagi").innerHTML = htmlPagi || `<tr><td colspan="4" class="p-4 text-center text-slate-400 italic text-[11px]">Kosong</td></tr>`;
+    
+    // Gunakan fungsi bawaan aman untuk mengantisipasi elemen tidak ketemu
+    const setTeks = (id, txt) => { const el = document.getElementById(id); if(el) el.innerText = txt; };
+    
+    setTeks("qty-pagi-utama", qtyPagiUtama);
+    setTeks("qty-pagi-lauk", qtyPagiLauk);
+    setTeks("tunai-pagi", "Rp " + tPagi.toLocaleString('id-ID'));
+    setTeks("qris-pagi", "Rp " + qrPagi.toLocaleString('id-ID'));
+    setTeks("total-pagi", "Rp " + (tPagi + qrPagi).toLocaleString('id-ID'));
     if(document.getElementById("body-rincian-pagi")) document.getElementById("body-rincian-pagi").innerHTML = rincianPagiBaris.join('') || `<tr><td colspan="4" class="p-4 text-center text-slate-400 italic">Kosong</td></tr>`;
 
-    // --- HITUNG & RENDER REKAP MALAM ---
+    // --- RENDER REKAP & TOTAL MALAM ---
     let htmlMalam = ""; let tMalam = 0, qrMalam = 0; let qtyMalamUtama = 0; let qtyMalamLauk = 0;
     for(let key in rekapMalam) {
         let r = rekapMalam[key];
@@ -777,16 +779,15 @@ function prosesLaporanHarian() {
             htmlMalam += `<tr class="border-b border-slate-100"><td class="p-2 text-slate-800 font-bold">${r.nama}</td><td class="p-2 text-center">${r.qty}</td><td class="p-2 text-right text-emerald-600">Rp ${r.tunai.toLocaleString('id-ID')}</td><td class="p-2 text-right text-sky-600">Rp ${r.qris.toLocaleString('id-ID')}</td></tr>`;
         }
     }
-    const bTabelMalam = document.getElementById("body-tabel-malam");
-    if(bTabelMalam) bTabelMalam.innerHTML = htmlMalam || `<tr><td colspan="4" class="p-4 text-center text-slate-400 italic text-[11px]">Kosong</td></tr>`;
-    safeSetText("qty-malam-utama", qtyMalamUtama);
-    safeSetText("qty-malam-lauk", qtyMalamLauk);
-    safeSetText("tunai-malam", "Rp " + tMalam.toLocaleString('id-ID'));
-    safeSetText("qris-malam", "Rp " + qrMalam.toLocaleString('id-ID'));
-    safeSetText("total-malam", "Rp " + (tMalam + qrMalam).toLocaleString('id-ID'));
+    document.getElementById("body-tabel-malam").innerHTML = htmlMalam || `<tr><td colspan="4" class="p-4 text-center text-slate-400 italic text-[11px]">Kosong</td></tr>`;
+    setTeks("qty-malam-utama", qtyMalamUtama);
+    setTeks("qty-malam-lauk", qtyMalamLauk);
+    setTeks("tunai-malam", "Rp " + tMalam.toLocaleString('id-ID'));
+    setTeks("qris-malam", "Rp " + qrMalam.toLocaleString('id-ID'));
+    setTeks("total-malam", "Rp " + (tMalam + qrMalam).toLocaleString('id-ID'));
     if(document.getElementById("body-rincian-malam")) document.getElementById("body-rincian-malam").innerHTML = rincianMalamBaris.join('') || `<tr><td colspan="4" class="p-4 text-center text-slate-400 italic">Kosong</td></tr>`;
 
-    // --- HITUNG & RENDER REKAP SEMBAKO (GABUNGAN) ---
+    // --- RENDER REKAP & TOTAL SEMBAKO (GABUNGAN) ---
     let htmlSembako = ""; let tSembako = 0, qrSembako = 0; let qtySembakoTotal = 0;
     for(let key in rekapSembako) {
         let r = rekapSembako[key];
@@ -796,12 +797,11 @@ function prosesLaporanHarian() {
             htmlSembako += `<tr class="border-b border-slate-100"><td class="p-2 text-slate-800 font-bold">${r.nama}</td><td class="p-2 text-center">${r.qty}</td><td class="p-2 text-right text-emerald-600">Rp ${r.tunai.toLocaleString('id-ID')}</td><td class="p-2 text-right text-sky-600">Rp ${r.qris.toLocaleString('id-ID')}</td></tr>`;
         }
     }
-    const bTabelSembako = document.getElementById("body-tabel-sembako");
-    if(bTabelSembako) bTabelSembako.innerHTML = htmlSembako || `<tr><td colspan="4" class="p-4 text-center text-slate-400 italic text-[11px]">Kosong</td></tr>`;
-    safeSetText("qty-sembako-total", qtySembakoTotal);
-    safeSetText("tunai-sembako", "Rp " + tSembako.toLocaleString('id-ID'));
-    safeSetText("qris-sembako", "Rp " + qrSembako.toLocaleString('id-ID'));
-    safeSetText("total-sembako", "Rp " + (tSembako + qrSembako).toLocaleString('id-ID'));
+    document.getElementById("body-tabel-sembako").innerHTML = htmlSembako || `<tr><td colspan="4" class="p-4 text-center text-slate-400 italic text-[11px]">Kosong</td></tr>`;
+    setTeks("qty-sembako-total", qtySembakoTotal);
+    setTeks("tunai-sembako", "Rp " + tSembako.toLocaleString('id-ID'));
+    setTeks("qris-sembako", "Rp " + qrSembako.toLocaleString('id-ID'));
+    setTeks("total-sembako", "Rp " + (tSembako + qrSembako).toLocaleString('id-ID'));
     if(document.getElementById("body-rincian-sembako")) document.getElementById("body-rincian-sembako").innerHTML = rincianSembakoBaris.join('') || `<tr><td colspan="4" class="p-4 text-center text-slate-400 italic">Kosong</td></tr>`;
 
     // --- GRAND TOTAL GLOBAL AKUMULASI ---
@@ -811,13 +811,12 @@ function prosesLaporanHarian() {
     let akumulasiQrisGlobal = qrPagi + qrMalam + qrSembako;
     let omsetTotalHariIni = akumulasiTunaiGlobal + akumulasiQrisGlobal;
 
-    safeSetText("grand-qty-utama", totalQtyUtamaGlobal);
-    safeSetText("grand-qty-lauk", totalQtyLaukGlobal);
-    safeSetText("grand-tunai-gabungan", "Rp " + akumulasiTunaiGlobal.toLocaleString('id-ID'));
-    safeSetText("grand-qris-gabungan", "Rp " + akumulasiQrisGlobal.toLocaleString('id-ID'));
-    safeSetText("grand-total-hari-ini", "Rp " + omsetTotalHariIni.toLocaleString('id-ID'));
+    setTeks("grand-qty-utama", totalQtyUtamaGlobal);
+    setTeks("grand-qty-lauk", totalQtyLaukGlobal);
+    setTeks("grand-tunai-gabungan", "Rp " + akumulasiTunaiGlobal.toLocaleString('id-ID'));
+    setTeks("grand-qris-gabungan", "Rp " + akumulasiQrisGlobal.toLocaleString('id-ID'));
+    setTeks("grand-total-hari-ini", "Rp " + omsetTotalHariIni.toLocaleString('id-ID'));
 }
-
         function bayarSekarang() {
             if(grandTotal === 0) { triggerNotif("Isi dulu item belanjaan kasir!", "error"); return; }
             if(caraBayar === "TUNAI" && cashDiterima < grandTotal) { triggerNotif("Uang cash kurang!", "error"); return; }
