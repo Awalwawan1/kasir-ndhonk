@@ -720,66 +720,73 @@ function prosesLaporanHarian() {
     });
 
     dataTransaksiSemua.forEach(tx => {
-        if(!tx.tanggal) return;
-        let txDate = new Date(tx.tanggal);
-        if(isNaN(txDate.getTime())) return;
+    if(!tx.tanggal) return;
+    let txDate = new Date(tx.tanggal);
+    if(isNaN(txDate.getTime())) return;
 
-        // Cek kecocokan waktu shift
-        let isWaktuPagi = (txDate >= pagiMulai && txDate <= pagiAkhir);
-        let isWaktuMalam = (txDate >= malamMulai && txDate <= malamAkhir);
-        if(!isWaktuPagi && !isWaktuMalam) return;
+    let isWaktuPagi = (txDate >= pagiMulai && txDate <= pagiAkhir);
+    let isWaktuMalam = (txDate >= malamMulai && txDate <= malamAkhir);
+    if(!isWaktuPagi && !isWaktuMalam) return;
 
-        let metodeStr = tx.metode ? tx.metode.toString().toUpperCase() : "TUNAI";
-        let itemRaw = tx.item ? tx.item.toString() : "";
-        let bagianItem = itemRaw.split(",");
+    let metodeStr = tx.metode ? tx.metode.toString().toUpperCase() : "TUNAI";
+    let itemRaw = tx.item ? tx.item.toString() : "";
+    let bagianItem = itemRaw.split(",");
+    
+    let badgeMetode = metodeStr === "QRIS" 
+        ? `<span class="px-1 text-[9px] font-bold bg-sky-50 text-sky-600 border border-sky-100">QRIS</span>`
+        : `<span class="px-1 text-[9px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">CASH</span>`;
+
+    let jamMenit = txDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false }).replace(/\./g, ':');
+    let htmlBarisDetail = `<tr class="border-b border-slate-100"><td class="p-2 text-slate-400 font-medium">${jamMenit}</td><td class="p-2 text-slate-800 leading-tight max-w-[150px] break-words">${tx.item}</td><td class="p-2 text-center">${badgeMetode}</td><td class="p-2 text-right text-slate-700">Rp ${Number(tx.total).toLocaleString('id-ID')}</td></tr>`;
+
+    let adaSembako = false;
+    let adaMenuLain = false;
+
+    bagianItem.forEach(bag => {
+        let bersihkan = bag.trim(); if(!bersihkan) return;
+        let namaMenu = bersihkan; let qtyMenu = 1;
+        let cocokQty = bersihkan.match(/(.+)\s\((\d+)x\)/);
+        if(cocokQty) { namaMenu = cocokQty[1].trim(); qtyMenu = parseInt(cocokQty[2], 10); }
+
+        // PERBAIKAN 1: Bersihkan tanda petik baku/miring dan spasi berlebih
+        let namaMenuBersih = namaMenu.replace(/\\'/g, "'").trim();
+
+        // PERBAIKAN 2: Cari menu di itemMenu dengan toleransi huruf besar/kecil
+        let matchMenu = itemMenu.find(m => m.nama.toLowerCase().trim() === namaMenuBersih.toLowerCase());
         
-        let badgeMetode = metodeStr === "QRIS" 
-            ? `<span class="px-1 text-[9px] font-bold bg-sky-50 text-sky-600 border border-sky-100">QRIS</span>`
-            : `<span class="px-1 text-[9px] font-bold bg-emerald-50 text-emerald-600 border border-emerald-100">CASH</span>`;
+        // Gunakan nama asli dari itemMenu agar key object-nya cocok saat looping render tabel
+        let namaMenuKey = matchMenu ? matchMenu.nama : namaMenuBersih; 
+        let kategoriMenu = matchMenu ? (matchMenu.kategori || "utama") : "utama";
+        kategoriMenu = kategoriMenu.toString().toLowerCase().trim();
 
-        let jamMenit = txDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', hour12: false }).replace(/\./g, ':');
-        let htmlBarisDetail = `<tr class="border-b border-slate-100"><td class="p-2 text-slate-400 font-medium">${jamMenit}</td><td class="p-2 text-slate-800 leading-tight max-w-[150px] break-words">${tx.item}</td><td class="p-2 text-center">${badgeMetode}</td><td class="p-2 text-right text-slate-700">Rp ${Number(tx.total).toLocaleString('id-ID')}</td></tr>`;
+        let hargaBawaan = matchMenu ? matchMenu.harga : 0;
+        let subTotalItem = qtyMenu * hargaBawaan;
 
-        let adaSembako = false;
-        let adaMenuLain = false;
-
-        bagianItem.forEach(bag => {
-            let bersihkan = bag.trim(); if(!bersihkan) return;
-            let namaMenu = bersihkan; let qtyMenu = 1;
-            let cocokQty = bersihkan.match(/(.+)\s\((\d+)x\)/);
-            if(cocokQty) { namaMenu = cocokQty[1].trim(); qtyMenu = parseInt(cocokQty[2], 10); }
-
-            // PERBAIKAN BUG: Hilangkan escape karakter backlash jika terbawa di string transaksi
-            let namaMenuBersih = namaMenu.replace(/\\'/g, "'");
-
-            let matchMenu = itemMenu.find(m => m.nama === namaMenuBersih);
-            let kategoriMenu = matchMenu ? (matchMenu.kategori || "utama") : "utama";
-            kategoriMenu = kategoriMenu.toString().toLowerCase().trim();
-
-            let hargaBawaan = matchMenu ? matchMenu.harga : 0;
-            let subTotalItem = qtyMenu * hargaBawaan;
-
-            if(kategoriMenu === "sembako") {
-                adaSembako = true;
-                if(!rekapSembako[namaMenuBersih]) { rekapSembako[namaMenuBersih] = { nama: namaMenuBersih, qty: 0, tunai: 0, qris: 0, harga: hargaBawaan, kategori: kategoriMenu }; }
-                rekapSembako[namaMenuBersih].qty += qtyMenu;
-                if(metodeStr === "QRIS") { rekapSembako[namaMenuBersih].qris += subTotalItem; } else { rekapSembako[namaMenuBersih].tunai += subTotalItem; }
-            } else {
-                adaMenuLain = true;
-                let targetRekap = isWaktuPagi ? rekapPagi : rekapMalam;
-                if(!targetRekap[namaMenuBersih]) { targetRekap[namaMenuBersih] = { nama: namaMenuBersih, qty: 0, tunai: 0, qris: 0, harga: hargaBawaan, kategori: kategoriMenu }; }
-                targetRekap[namaMenuBersih].qty += qtyMenu;
-                if(metodeStr === "QRIS") { targetRekap[namaMenuBersih].qris += subTotalItem; } else { targetRekap[namaMenuBersih].tunai += subTotalItem; }
+        if(kategoriMenu === "sembako") {
+            adaSembako = true;
+            // Pastikan menggunakan namaMenuKey yang konsisten
+            if(!rekapSembako[namaMenuKey]) { 
+                rekapSembako[namaMenuKey] = { nama: namaMenuKey, qty: 0, tunai: 0, qris: 0, harga: hargaBawaan, kategori: kategoriMenu }; 
             }
-        });
-
-        // Masukkan ke array rincian tampilan
-        if(adaSembako) rincianSembakoBaris.push(htmlBarisDetail);
-        if(adaMenuLain) {
-            if(isWaktuPagi) rincianPagiBaris.push(htmlBarisDetail);
-            else rincianMalamBaris.push(htmlBarisDetail);
+            rekapSembako[namaMenuKey].qty += qtyMenu;
+            if(metodeStr === "QRIS") { rekapSembako[namaMenuKey].qris += subTotalItem; } else { rekapSembako[namaMenuKey].tunai += subTotalItem; }
+        } else {
+            adaMenuLain = true;
+            let targetRekap = isWaktuPagi ? rekapPagi : rekapMalam;
+            if(!targetRekap[namaMenuKey]) { 
+                targetRekap[namaMenuKey] = { nama: namaMenuKey, qty: 0, tunai: 0, qris: 0, harga: hargaBawaan, kategori: kategoriMenu }; 
+            }
+            targetRekap[namaMenuKey].qty += qtyMenu;
+            if(metodeStr === "QRIS") { targetRekap[namaMenuKey].qris += subTotalItem; } else { targetRekap[namaMenuKey].tunai += subTotalItem; }
         }
     });
+
+    if(adaSembako) rincianSembakoBaris.push(htmlBarisDetail);
+    if(adaMenuLain) {
+        if(isWaktuPagi) rincianPagiBaris.push(htmlBarisDetail);
+        else rincianMalamBaris.push(htmlBarisDetail);
+    }
+});
 
     const setTeks = (id, txt) => { const el = document.getElementById(id); if(el) el.innerText = txt; };
     const setHtml = (id, html) => { const el = document.getElementById(id); if(el) el.innerHTML = html; };
