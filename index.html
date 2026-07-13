@@ -224,14 +224,15 @@
             
         </section>
 
-        <!-- ================= PAGE 2: LAPORAN REKAP SHIFT ================= -->
+      <!-- ================= PAGE 2: LAPORAN REKAP SHIFT ================= -->
         <section id="page-laporan" class="lg:col-span-12 space-y-4 hidden w-full">
             
-          <!-- TEMPAT PILIHAN TANGGAL (SUDAH DIPERBAIKI SUPAYA TIDAK BERTUMPUK DI HP) -->
-<div class="bg-white rounded-2xl p-3 shadow-sm border border-slate-200/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-    <span class="text-xs font-black text-slate-700">📅 Lihat Laporan Tanggal:</span>
-    <input type="text" id="filter-tanggal" class="w-full sm:w-auto bg-slate-100 text-slate-800 font-black text-xs p-2 px-4 rounded-xl border border-slate-200 focus:outline-none cursor-pointer text-center" placeholder="Pilih Tanggal" readonly>
-</div>
+            <!-- TEMPAT PILIHAN TANGGAL -->
+            <div class="bg-white rounded-2xl p-3 shadow-sm border border-slate-200/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                <span class="text-xs font-black text-slate-700">📅 Lihat Laporan Tanggal:</span>
+                <input type="text" id="filter-tanggal" class="w-full sm:w-auto bg-slate-100 text-slate-800 font-black text-xs p-2 px-4 rounded-xl border border-slate-200 focus:outline-none cursor-pointer text-center" placeholder="Pilih Tanggal" readonly>
+            </div>
+
             <!-- RINGKASAN GRAND TOTAL GLOBAL -->
             <div class="bg-slate-900 rounded-2xl p-4 text-white border border-slate-800 shadow-md">
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -260,6 +261,7 @@
                     <span id="grand-total-hari-ini" class="text-xl font-black text-amber-400">Rp 0</span>
                 </div>
             </div>
+
             <!-- SHIFT 1: PAGI -->
             <div class="bg-white rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden">
                 <div class="bg-slate-50 p-3.5 border-b border-slate-100 flex justify-between items-center">
@@ -345,6 +347,37 @@
                     <div class="bg-amber-50 p-2 rounded-lg border border-amber-100">GRAND TOTAL: <span id="total-malam" class="block font-black text-amber-700">Rp 0</span></div>
                 </div>
             </div>
+
+            <!-- KATEGORI TAMBAHAN: REKAP SEMBAKO -->
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200/60 overflow-hidden">
+                <div class="bg-slate-50 p-3.5 border-b border-slate-100 flex justify-between items-center">
+                    <div>
+                        <h3 class="font-black text-slate-800 text-xs flex items-center">📦 Penjualan Sembako</h3>
+                        <p class="text-[9px] text-slate-400 font-bold">Akumulasi Penjualan Produk Sembako</p>
+                    </div>
+                </div>
+                <div id="area-rekap-sembako" class="p-3 overflow-x-auto">
+                    <table class="w-full text-xs text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 text-slate-400 font-black uppercase text-[9px] border-b border-slate-100">
+                                <th class="p-2.5">Nama Barang</th>
+                                <th class="p-2.5 text-center">Qty</th>
+                                <th class="p-2.5 text-right">Tunai</th>
+                                <th class="p-2.5 text-right">QRIS</th>
+                            </tr>
+                        </thead>
+                        <!-- JavaScript akan merender data ke dalam id ini -->
+                        <tbody id="body-tabel-sembako" class="divide-y divide-slate-100 font-bold text-slate-700"></tbody>
+                    </table>
+                </div>
+                <div class="bg-slate-50 p-3 border-t border-slate-100 grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px] font-bold text-slate-600">
+                    <div class="bg-white p-2 rounded-lg border border-slate-100">Qty: <span id="qty-sembako-total" class="block font-black text-amber-600">0</span></div>
+                    <div class="bg-white p-2 rounded-lg border border-slate-100">Tunai: <span id="tunai-sembako" class="block font-black text-emerald-600">Rp 0</span></div>
+                    <div class="bg-white p-2 rounded-lg border border-slate-100">QRIS: <span id="qris-sembako" class="block font-black text-sky-600">Rp 0</span></div>
+                    <div class="bg-amber-50 p-2 rounded-lg border border-amber-100">TOTAL SEMBAKO: <span id="total-sembako" class="block font-black text-amber-700">Rp 0</span></div>
+                </div>
+            </div>
+            
         </section>
     </main>
 
