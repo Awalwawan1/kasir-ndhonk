@@ -47,12 +47,54 @@
             border-radius: 9999px;
             font-weight: 700;
         }
+        /* Debug panel */
+        #debug-panel {
+            position: fixed;
+            bottom: 70px;
+            right: 10px;
+            z-index: 999;
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 10px;
+            border-radius: 10px;
+            font-size: 10px;
+            max-width: 300px;
+            max-height: 200px;
+            overflow: auto;
+            display: none;
+            font-family: monospace;
+        }
+        #debug-panel.show {
+            display: block;
+        }
+        #debug-toggle {
+            position: fixed;
+            bottom: 70px;
+            right: 10px;
+            z-index: 1000;
+            background: #475569;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            font-size: 16px;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+        #debug-toggle:hover {
+            background: #334155;
+        }
     </style>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/id.js"></script>
 </head>
 <body class="bg-slate-100 font-sans text-slate-800 min-h-screen flex flex-col pb-24">
+
+    <!-- DEBUG TOGGLE -->
+    <button id="debug-toggle" onclick="toggleDebug()">🐛</button>
+    <div id="debug-panel"></div>
 
     <!-- DIALOG NOTIFIKASI KUSTOM -->
     <div id="notif-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
@@ -541,6 +583,28 @@
         let menuYangDiedit = null;
         let tabLaporanAktif = 'harian';
 
+        // Debug
+        let debugLogs = [];
+
+        function addDebug(msg) {
+            debugLogs.push(msg);
+            if (debugLogs.length > 50) debugLogs.shift();
+            const panel = document.getElementById('debug-panel');
+            if (panel && panel.classList.contains('show')) {
+                panel.innerHTML = debugLogs.join('<br>');
+                panel.scrollTop = panel.scrollHeight;
+            }
+        }
+
+        function toggleDebug() {
+            const panel = document.getElementById('debug-panel');
+            panel.classList.toggle('show');
+            if (panel.classList.contains('show')) {
+                panel.innerHTML = debugLogs.join('<br>');
+                panel.scrollTop = panel.scrollHeight;
+            }
+        }
+
         document.addEventListener("DOMContentLoaded", () => {
             updateJamDigital();
             setInterval(updateJamDigital, 1000);
@@ -670,7 +734,6 @@
             if(loadingText) loadingText.classList.remove("hidden");
             if(menuContainer) menuContainer.classList.add("hidden");
             
-            // Reset orderan agar tidak bentrok dengan data baru
             orderan = {};
             grandTotal = 0;
             cashDiterima = 0;
@@ -737,6 +800,10 @@
                 let rawData = await res.json();
                 let menuData = Array.isArray(rawData) ? rawData : (rawData.menu || []);
                 dataTransaksiSemua = rawData.transaksi || []; 
+                
+                addDebug('📦 Data diterima dari server:');
+                addDebug(`- Menu: ${menuData.length} item`);
+                addDebug(`- Transaksi: ${dataTransaksiSemua.length} item`);
                 
                 itemMenu = menuData.map(item => ({
                     nama: item.nama ? item.nama.toString().trim() : "Tanpa Nama",
@@ -1150,7 +1217,6 @@
                 return;
             }
 
-            // Update label bulan
             const bulanNama = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 
                               'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
             const label = document.getElementById('bulan-label');
@@ -1165,11 +1231,12 @@
                        (txDate.getMonth() + 1) === parseInt(bulanTerpilih);
             });
 
+            addDebug(`📊 Laporan Bulanan: ${transaksiBulan.length} transaksi ditemukan`);
+
             // Rekap per hari
             let rekapHari = {};
             let totalTunaiBulan = 0;
             let totalQrisBulan = 0;
-            let totalTransaksi = 0;
 
             // Rekap per kategori
             let rekapKategori = {
@@ -1178,7 +1245,7 @@
                 sembako: {}
             };
 
-            transaksiBulan.forEach(tx => {
+            transaksiBulan.forEach((tx, idx) => {
                 let txDate = new Date(tx.tanggal);
                 let tglKey = txDate.toISOString().split('T')[0];
                 let tglDisplay = txDate.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -1190,6 +1257,8 @@
                 let metode = tx.metode ? tx.metode.toString().toUpperCase() : "TUNAI";
                 let nominal = Number(tx.total) || 0;
 
+                addDebug(`  Tx ${idx+1}: ${metode} - Rp ${nominal.toLocaleString()}`);
+
                 // AKUMULASI PER METODE PEMBAYARAN
                 if (metode === "QRIS") {
                     rekapHari[tglKey].qris += nominal;
@@ -1200,14 +1269,14 @@
                 }
                 rekapHari[tglKey].total += nominal;
                 rekapHari[tglKey].count += 1;
-                totalTransaksi += 1;
 
                 // PARSE ITEM UNTUK REKAP KATEGORI
                 let itemRaw = tx.item ? tx.item.toString() : "";
                 let bagianItem = itemRaw.split(",");
                 
+                addDebug(`    Items: ${itemRaw}`);
+
                 // Hitung total qty dan simpan detail item
-                let totalQtySemuaItem = 0;
                 let itemDetails = [];
                 
                 bagianItem.forEach(bag => {
@@ -1225,13 +1294,14 @@
                     let matchMenu = itemMenu.find(m => m.nama.toLowerCase().trim() === namaMenu.toLowerCase().trim());
                     let hargaItem = matchMenu ? matchMenu.harga : 0;
                     
-                    totalQtySemuaItem += qtyMenu;
                     itemDetails.push({
                         nama: namaMenu,
                         qty: qtyMenu,
                         harga: hargaItem,
                         match: matchMenu
                     });
+                    
+                    addDebug(`      - ${namaMenu} x${qtyMenu} = Rp ${(qtyMenu * hargaItem).toLocaleString()}`);
                 });
                 
                 // AKUMULASI PER KATEGORI
@@ -1256,15 +1326,15 @@
                         
                         // Hitung nominal berdasarkan harga item
                         if (detail.harga > 0) {
-                            targetRekap[detail.nama].nominal += detail.qty * detail.harga;
-                        } else {
-                            // Fallback: proporsional dari total
-                            let proporsi = totalQtySemuaItem > 0 ? detail.qty / totalQtySemuaItem : 1;
-                            targetRekap[detail.nama].nominal += nominal * proporsi;
+                            let nominalItem = detail.qty * detail.harga;
+                            targetRekap[detail.nama].nominal += nominalItem;
                         }
                     }
                 });
             });
+
+            addDebug(`💰 Total Tunai: Rp ${totalTunaiBulan.toLocaleString()}`);
+            addDebug(`💰 Total QRIS: Rp ${totalQrisBulan.toLocaleString()}`);
 
             // Render tabel per hari
             let htmlTabel = "";
@@ -1335,7 +1405,6 @@
         }
 
         function bayarSekarang() {
-            // Cek apakah ada item habis yang terpilih
             let adaHabis = false;
             for(let key in orderan) {
                 if (orderan[key] > 0) {
