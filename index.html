@@ -26,6 +26,9 @@
             opacity: 0.3;
             pointer-events: none;
         }
+        .menu-habis .btn-qty button {
+            pointer-events: none;
+        }
     </style>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
@@ -649,6 +652,11 @@
             if(loadingText) loadingText.classList.remove("hidden");
             if(menuContainer) menuContainer.classList.add("hidden");
             
+            // Reset orderan agar tidak bentrok dengan data baru
+            orderan = {};
+            grandTotal = 0;
+            cashDiterima = 0;
+            
             muatMenu();
         }
 
@@ -727,6 +735,8 @@
                 renderUangRupiah();
                 if (tabLaporanAktif === 'harian') prosesLaporanHarian();
                 else prosesLaporanBulanan();
+                
+                triggerNotif("Data berhasil disinkronkan!", "success");
             } catch (err) {
                 if(loadingText) { loadingText.innerHTML = "<p class='text-xs font-black text-rose-600'>❌ Sinkronisasi Gagal! Periksa Internet Anda.</p><button onclick='sinkronDataManual()' class='mt-2 text-[10px] bg-slate-800 text-white p-2 px-3 rounded-lg font-bold'>Coba Lagi</button>"; }
                 console.error(err);
@@ -742,10 +752,10 @@
             if (isHabis) {
                 return `
                 <div class="pt-2 pb-2 block w-full text-left menu-habis">
-                    <div class="font-bold text-slate-400 text-[11px] leading-tight break-words max-w-full">${item.nama}</div>
-                    <div class="text-[10px] font-black text-slate-400 mb-1.5">Rp ${(item.harga || 0).toLocaleString('id-ID')}</div>
+                    <div class="font-bold text-slate-400 text-[11px] leading-tight break-words max-w-full line-through">${item.nama}</div>
+                    <div class="text-[10px] font-black text-slate-400 mb-1.5 line-through">Rp ${(item.harga || 0).toLocaleString('id-ID')}</div>
                     <div class="flex items-center space-x-1 btn-qty">
-                        <span class="text-[9px] text-slate-400">⛔ Habis</span>
+                        <span class="text-[9px] text-rose-500 font-bold bg-rose-50 px-2 py-0.5 rounded-full border border-rose-200">⛔ HABIS</span>
                     </div>
                 </div>`;
             }
@@ -811,7 +821,7 @@
             // Cek apakah item habis
             const item = itemMenu.find(i => i.nama === nama);
             if (item && item.status === "habis") {
-                triggerNotif(`Maaf, ${nama} sedang habis!`, "error");
+                triggerNotif(`⚠️ Maaf, ${nama} sedang HABIS!`, "error");
                 return;
             }
             
@@ -830,7 +840,10 @@
         function kalkulasiNota() {
             grandTotal = 0;
             itemMenu.forEach(item => { 
-                grandTotal += (orderan[item.nama] || 0) * (item.harga || 0); 
+                // Hanya hitung item yang tidak habis
+                if (item.status !== "habis") {
+                    grandTotal += (orderan[item.nama] || 0) * (item.harga || 0); 
+                }
             });
             safeSetText("total-screen", "Rp " + grandTotal.toLocaleString('id-ID'));
             safeSetText("qris-amount-text", "Rp " + grandTotal.toLocaleString('id-ID'));
@@ -1279,6 +1292,19 @@
         }
 
         function bayarSekarang() {
+            // Cek apakah ada item habis yang terpilih
+            let adaHabis = false;
+            for(let key in orderan) {
+                if (orderan[key] > 0) {
+                    const item = itemMenu.find(i => i.nama === key);
+                    if (item && item.status === "habis") {
+                        adaHabis = true;
+                        triggerNotif(`⚠️ ${key} sedang HABIS!`, "error");
+                        return;
+                    }
+                }
+            }
+
             if(grandTotal === 0) { triggerNotif("Isi dulu item belanjaan kasir!", "error"); return; }
             if(caraBayar === "TUNAI" && cashDiterima < grandTotal) { triggerNotif("Uang cash kurang!", "error"); return; }
 
