@@ -29,25 +29,6 @@
         .menu-habis .btn-qty button {
             pointer-events: none;
         }
-        .status-badge-habis {
-            background-color: #fef2f2;
-            color: #dc2626;
-            border: 1px solid #fecaca;
-            font-size: 9px;
-            padding: 2px 8px;
-            border-radius: 9999px;
-            font-weight: 700;
-        }
-        .status-badge-tersedia {
-            background-color: #f0fdf4;
-            color: #16a34a;
-            border: 1px solid #bbf7d0;
-            font-size: 9px;
-            padding: 2px 8px;
-            border-radius: 9999px;
-            font-weight: 700;
-        }
-        /* Debug panel */
         #debug-panel {
             position: fixed;
             bottom: 70px;
@@ -58,11 +39,12 @@
             padding: 10px;
             border-radius: 10px;
             font-size: 10px;
-            max-width: 300px;
-            max-height: 200px;
+            max-width: 350px;
+            max-height: 250px;
             overflow: auto;
             display: none;
             font-family: monospace;
+            border: 1px solid #475569;
         }
         #debug-panel.show {
             display: block;
@@ -85,6 +67,9 @@
         #debug-toggle:hover {
             background: #334155;
         }
+        .debug-tunai { color: #34d399; }
+        .debug-qris { color: #60a5fa; }
+        .debug-total { color: #fbbf24; }
     </style>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
@@ -586,9 +571,21 @@
         // Debug
         let debugLogs = [];
 
-        function addDebug(msg) {
-            debugLogs.push(msg);
+        function addDebug(msg, type) {
+            const timestamp = new Date().toLocaleTimeString();
+            let prefix = '';
+            if (type === 'tunai') prefix = '💰 ';
+            else if (type === 'qris') prefix = '📱 ';
+            else if (type === 'total') prefix = '🏦 ';
+            else if (type === 'error') prefix = '❌ ';
+            else if (type === 'success') prefix = '✅ ';
+            
+            debugLogs.push(`${timestamp} ${prefix}${msg}`);
             if (debugLogs.length > 50) debugLogs.shift();
+            updateDebugPanel();
+        }
+
+        function updateDebugPanel() {
             const panel = document.getElementById('debug-panel');
             if (panel && panel.classList.contains('show')) {
                 panel.innerHTML = debugLogs.join('<br>');
@@ -600,12 +597,12 @@
             const panel = document.getElementById('debug-panel');
             panel.classList.toggle('show');
             if (panel.classList.contains('show')) {
-                panel.innerHTML = debugLogs.join('<br>');
-                panel.scrollTop = panel.scrollHeight;
+                updateDebugPanel();
             }
         }
 
         document.addEventListener("DOMContentLoaded", () => {
+            addDebug('🚀 Aplikasi dimulai', 'success');
             updateJamDigital();
             setInterval(updateJamDigital, 1000);
             setDefaultTanggal();
@@ -796,14 +793,13 @@
             const loadingText = document.getElementById("loading-text");
             const menuContainer = document.getElementById("menu-container");
             try {
+                addDebug('📡 Mengambil data dari server...');
                 let res = await fetch(APPS_SCRIPT_URL);
                 let rawData = await res.json();
                 let menuData = Array.isArray(rawData) ? rawData : (rawData.menu || []);
                 dataTransaksiSemua = rawData.transaksi || []; 
                 
-                addDebug('📦 Data diterima dari server:');
-                addDebug(`- Menu: ${menuData.length} item`);
-                addDebug(`- Transaksi: ${dataTransaksiSemua.length} item`);
+                addDebug(`📦 Data diterima: ${menuData.length} menu, ${dataTransaksiSemua.length} transaksi`);
                 
                 itemMenu = menuData.map(item => ({
                     nama: item.nama ? item.nama.toString().trim() : "Tanpa Nama",
@@ -820,8 +816,10 @@
                 if (tabLaporanAktif === 'harian') prosesLaporanHarian();
                 else prosesLaporanBulanan();
                 
+                addDebug('✅ Sinkronisasi selesai', 'success');
                 triggerNotif("Data berhasil disinkronkan!", "success");
             } catch (err) {
+                addDebug(`❌ Error: ${err.message}`, 'error');
                 if(loadingText) { loadingText.innerHTML = "<p class='text-xs font-black text-rose-600'>❌ Sinkronisasi Gagal! Periksa Internet Anda.</p><button onclick='sinkronDataManual()' class='mt-2 text-[10px] bg-slate-800 text-white p-2 px-3 rounded-lg font-bold'>Coba Lagi</button>"; }
                 console.error(err);
             }
@@ -1259,13 +1257,15 @@
 
                 addDebug(`  Tx ${idx+1}: ${metode} - Rp ${nominal.toLocaleString()}`);
 
-                // AKUMULASI PER METODE PEMBAYARAN
+                // AKUMULASI PER METODE PEMBAYARAN - PERBAIKAN UTAMA
                 if (metode === "QRIS") {
                     rekapHari[tglKey].qris += nominal;
                     totalQrisBulan += nominal;
+                    addDebug(`    ➕ QRIS: Rp ${nominal.toLocaleString()} (total: Rp ${totalQrisBulan.toLocaleString()})`, 'qris');
                 } else {
                     rekapHari[tglKey].tunai += nominal;
                     totalTunaiBulan += nominal;
+                    addDebug(`    ➕ TUNAI: Rp ${nominal.toLocaleString()} (total: Rp ${totalTunaiBulan.toLocaleString()})`, 'tunai');
                 }
                 rekapHari[tglKey].total += nominal;
                 rekapHari[tglKey].count += 1;
@@ -1274,8 +1274,6 @@
                 let itemRaw = tx.item ? tx.item.toString() : "";
                 let bagianItem = itemRaw.split(",");
                 
-                addDebug(`    Items: ${itemRaw}`);
-
                 // Hitung total qty dan simpan detail item
                 let itemDetails = [];
                 
@@ -1333,8 +1331,10 @@
                 });
             });
 
-            addDebug(`💰 Total Tunai: Rp ${totalTunaiBulan.toLocaleString()}`);
-            addDebug(`💰 Total QRIS: Rp ${totalQrisBulan.toLocaleString()}`);
+            // Update Debug dengan total akhir
+            addDebug(`💰 TOTAL TUNAI: Rp ${totalTunaiBulan.toLocaleString()}`, 'tunai');
+            addDebug(`💰 TOTAL QRIS: Rp ${totalQrisBulan.toLocaleString()}`, 'qris');
+            addDebug(`🏦 OMSET BULANAN: Rp ${(totalTunaiBulan + totalQrisBulan).toLocaleString()}`, 'total');
 
             // Render tabel per hari
             let htmlTabel = "";
@@ -1355,10 +1355,10 @@
                 tbody.innerHTML = htmlTabel || `<tr><td colspan="5" class="p-4 text-center text-slate-400 italic text-[11px]">Tidak ada transaksi di bulan ini</td></tr>`;
             }
 
-            // Update ringkasan bulanan
-            setTeks('bulan-tunai', 'Rp ' + totalTunaiBulan.toLocaleString('id-ID'));
-            setTeks('bulan-qris', 'Rp ' + totalQrisBulan.toLocaleString('id-ID'));
-            setTeks('bulan-total', 'Rp ' + (totalTunaiBulan + totalQrisBulan).toLocaleString('id-ID'));
+            // PERBAIKAN UTAMA: Update ringkasan bulanan
+            safeSetText('bulan-tunai', 'Rp ' + totalTunaiBulan.toLocaleString('id-ID'));
+            safeSetText('bulan-qris', 'Rp ' + totalQrisBulan.toLocaleString('id-ID'));
+            safeSetText('bulan-total', 'Rp ' + (totalTunaiBulan + totalQrisBulan).toLocaleString('id-ID'));
 
             // Render rekap per kategori
             renderRekapKategori('bulan-rekap-utama', rekapKategori.utama);
