@@ -29,6 +29,24 @@
         .menu-habis .btn-qty button {
             pointer-events: none;
         }
+        .status-badge-habis {
+            background-color: #fef2f2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+            font-size: 9px;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            font-weight: 700;
+        }
+        .status-badge-tersedia {
+            background-color: #f0fdf4;
+            color: #16a34a;
+            border: 1px solid #bbf7d0;
+            font-size: 9px;
+            padding: 2px 8px;
+            border-radius: 9999px;
+            font-weight: 700;
+        }
     </style>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
@@ -674,7 +692,7 @@
                     btn.classList.remove('bg-green-50', 'text-green-600');
                 }
             });
-            renderMenu(); // Refresh menu dengan mode edit
+            renderMenu();
         }
 
         function bukaModalUpdateHarga(namaMenu, hargaSekarang) {
@@ -698,7 +716,6 @@
                 return;
             }
 
-            // Update di array itemMenu
             const index = itemMenu.findIndex(item => item.nama === namaMenu);
             if (index !== -1) {
                 itemMenu[index].harga = hargaBaru;
@@ -721,7 +738,6 @@
                 let menuData = Array.isArray(rawData) ? rawData : (rawData.menu || []);
                 dataTransaksiSemua = rawData.transaksi || []; 
                 
-                // PERBAIKAN: Normalisasi data menu
                 itemMenu = menuData.map(item => ({
                     nama: item.nama ? item.nama.toString().trim() : "Tanpa Nama",
                     harga: isNaN(Number(item.harga)) ? 0 : Number(item.harga),
@@ -745,12 +761,10 @@
         }
 
         function createItemHtml(item) {
-            // PERBAIKAN: Normalisasi status
             const isHabis = item.status === "habis";
             if(!orderan[item.nama]) orderan[item.nama] = 0;
             const idAman = item.nama.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
             
-            // Cek apakah item habis
             if (isHabis) {
                 return `
                 <div class="pt-2 pb-2 block w-full text-left menu-habis">
@@ -763,7 +777,6 @@
             }
             
             if (isEditMode) {
-                // Tampilan mode edit dengan tombol untuk update harga
                 return `
                 <div class="menu-item-edit pt-2 pb-2 block w-full text-left bg-white rounded-xl border border-blue-200 p-2 shadow-sm">
                     <div class="font-bold text-slate-800 text-[11px] leading-tight break-words max-w-full">${item.nama}</div>
@@ -781,7 +794,6 @@
                     </div>
                 </div>`;
             } else {
-                // Tampilan normal (tanpa edit) - hanya untuk item tersedia
                 return `
                 <div class="pt-2 pb-2 block w-full text-left">
                     <div class="font-bold text-slate-800 text-[11px] leading-tight break-words max-w-full">${item.nama}</div>
@@ -820,7 +832,6 @@
         }
 
         function ubahQty(nama, delta) {
-            // Cek apakah item habis
             const item = itemMenu.find(i => i.nama === nama);
             if (item && item.status === "habis") {
                 triggerNotif(`⚠️ Maaf, ${nama} sedang HABIS!`, "error");
@@ -842,7 +853,6 @@
         function kalkulasiNota() {
             grandTotal = 0;
             itemMenu.forEach(item => { 
-                // Hanya hitung item yang tidak habis
                 if (item.status !== "habis") {
                     grandTotal += (orderan[item.nama] || 0) * (item.harga || 0); 
                 }
@@ -1052,7 +1062,6 @@
             const setTeks = (id, txt) => { const el = document.getElementById(id); if(el) el.innerText = txt; };
             const setHtml = (id, html) => { const el = document.getElementById(id); if(el) el.innerHTML = html; };
 
-            // --- RENDER REKAP & TOTAL PAGI ---
             let htmlPagi = ""; let tPagi = 0, qrPagi = 0; let qtyPagiUtama = 0; let qtyPagiLauk = 0;
             for(let key in rekapPagi) {
                 let r = rekapPagi[key];
@@ -1072,7 +1081,6 @@
             setTeks("total-pagi", "Rp " + (tPagi + qrPagi).toLocaleString('id-ID'));
             setHtml("body-rincian-pagi", rincianPagiBaris.join('') || `<tr><td colspan="4" class="p-4 text-center text-slate-400 italic">Kosong</td></tr>`);
 
-            // --- RENDER REKAP & TOTAL MALAM ---
             let htmlMalam = ""; let tMalam = 0, qrMalam = 0; let qtyMalamUtama = 0; let qtyMalamLauk = 0;
             for(let key in rekapMalam) {
                 let r = rekapMalam[key];
@@ -1091,7 +1099,6 @@
             setTeks("total-malam", "Rp " + (tMalam + qrMalam).toLocaleString('id-ID'));
             setHtml("body-rincian-malam", rincianMalamBaris.join('') || `<tr><td colspan="4" class="p-4 text-center text-slate-400 italic">Kosong</td></tr>`);
 
-            // --- RENDER REKAP & TOTAL SEMBAKO (GABUNGAN) ---
             let htmlSembako = ""; let tSembako = 0, qrSembako = 0; let qtySembakoTotal = 0;
             for(let key in rekapSembako) {
                 let r = rekapSembako[key];
@@ -1108,7 +1115,6 @@
             setTeks("total-sembako", "Rp " + (tSembako + qrSembako).toLocaleString('id-ID'));
             setHtml("body-rincian-sembako", rincianSembakoBaris.join('') || `<tr><td colspan="4" class="p-4 text-center text-slate-400 italic">Kosong</td></tr>`);
 
-            // --- GRAND TOTAL GLOBAL AKUMULASI ---
             let totalQtyUtamaGlobal = qtyPagiUtama + qtyMalamUtama;
             let totalQtyLaukGlobal = qtyPagiLauk + qtyMalamLauk;
             let akumulasiTunaiGlobal = tPagi + tMalam + tSembako;
@@ -1128,7 +1134,7 @@
             setTeks("grand-total-hari-ini", "Rp " + omsetTotalHariIni.toLocaleString('id-ID'));
         }
 
-        // ==================== LAPORAN BULANAN (PERBAIKAN) ====================
+        // ==================== LAPORAN BULANAN (FIX TOTAL) ====================
         function prosesLaporanBulanan() {
             const filterBulanInput = document.getElementById("filter-bulan");
             if(!filterBulanInput) return;
@@ -1200,11 +1206,14 @@
                 let itemRaw = tx.item ? tx.item.toString() : "";
                 let bagianItem = itemRaw.split(",");
                 
+                // Hitung total qty dan simpan detail item
+                let totalQtySemuaItem = 0;
+                let itemDetails = [];
+                
                 bagianItem.forEach(bag => {
                     let bersihkan = bag.trim();
                     if (!bersihkan) return;
                     
-                    // Ekstrak nama dan qty dari format "Nama Menu (Qtyx)"
                     let namaMenu = bersihkan;
                     let qtyMenu = 1;
                     let cocokQty = bersihkan.match(/(.+?)\s*\((\d+)x\)/);
@@ -1212,13 +1221,24 @@
                         namaMenu = cocokQty[1].trim();
                         qtyMenu = parseInt(cocokQty[2], 10);
                     }
-
-                    // Cari menu di itemMenu (case insensitive)
+                    
                     let matchMenu = itemMenu.find(m => m.nama.toLowerCase().trim() === namaMenu.toLowerCase().trim());
-                    let kategori = matchMenu ? (matchMenu.kategori || "utama") : "utama";
+                    let hargaItem = matchMenu ? matchMenu.harga : 0;
+                    
+                    totalQtySemuaItem += qtyMenu;
+                    itemDetails.push({
+                        nama: namaMenu,
+                        qty: qtyMenu,
+                        harga: hargaItem,
+                        match: matchMenu
+                    });
+                });
+                
+                // AKUMULASI PER KATEGORI
+                itemDetails.forEach(detail => {
+                    let kategori = detail.match ? (detail.match.kategori || "utama") : "utama";
                     kategori = kategori.toString().toLowerCase().trim();
-
-                    // Tentukan target rekap
+                    
                     let targetRekap = null;
                     if (kategori === "sembako") {
                         targetRekap = rekapKategori.sembako;
@@ -1227,23 +1247,20 @@
                     } else {
                         targetRekap = rekapKategori.utama;
                     }
-
-                    // Akumulasi ke kategori
+                    
                     if (targetRekap) {
-                        if (!targetRekap[namaMenu]) {
-                            targetRekap[namaMenu] = { 
-                                qty: 0, 
-                                nominal: 0
-                            };
+                        if (!targetRekap[detail.nama]) {
+                            targetRekap[detail.nama] = { qty: 0, nominal: 0 };
                         }
-                        targetRekap[namaMenu].qty += qtyMenu;
-                        // Gunakan harga dari matchMenu atau proporsi
-                        if (matchMenu) {
-                            targetRekap[namaMenu].nominal += qtyMenu * matchMenu.harga;
+                        targetRekap[detail.nama].qty += detail.qty;
+                        
+                        // Hitung nominal berdasarkan harga item
+                        if (detail.harga > 0) {
+                            targetRekap[detail.nama].nominal += detail.qty * detail.harga;
                         } else {
-                            // Jika tidak ditemukan, gunakan proporsi dari total
-                            let itemCount = bagianItem.length;
-                            targetRekap[namaMenu].nominal += (nominal / itemCount);
+                            // Fallback: proporsional dari total
+                            let proporsi = totalQtySemuaItem > 0 ? detail.qty / totalQtySemuaItem : 1;
+                            targetRekap[detail.nama].nominal += nominal * proporsi;
                         }
                     }
                 });
