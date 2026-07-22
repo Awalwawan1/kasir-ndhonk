@@ -721,8 +721,9 @@
                 let menuData = Array.isArray(rawData) ? rawData : (rawData.menu || []);
                 dataTransaksiSemua = rawData.transaksi || []; 
                 
+                // PERBAIKAN: Normalisasi data menu
                 itemMenu = menuData.map(item => ({
-                    nama: item.nama ? item.nama.toString() : "Tanpa Nama",
+                    nama: item.nama ? item.nama.toString().trim() : "Tanpa Nama",
                     harga: isNaN(Number(item.harga)) ? 0 : Number(item.harga),
                     kategori: item.kategori ? item.kategori.toString().trim().toLowerCase() : "utama",
                     status: item.status ? item.status.toString().trim().toLowerCase() : "tersedia"
@@ -744,9 +745,10 @@
         }
 
         function createItemHtml(item) {
+            // PERBAIKAN: Normalisasi status
             const isHabis = item.status === "habis";
             if(!orderan[item.nama]) orderan[item.nama] = 0;
-            const idAman = item.nama.replace(/\s+/g, '_');
+            const idAman = item.nama.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
             
             // Cek apakah item habis
             if (isHabis) {
@@ -826,7 +828,7 @@
             }
             
             orderan[nama] = Math.max(0, (orderan[nama] || 0) + delta);
-            const idAman = nama.replace(/\s+/g, '_');
+            const idAman = nama.replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
             const elemenQty = document.getElementById(`qty-${idAman}`);
             if(elemenQty) { elemenQty.innerText = orderan[nama]; }
             kalkulasiNota();
@@ -1006,7 +1008,7 @@
                 bagianItem.forEach(bag => {
                     let bersihkan = bag.trim(); if(!bersihkan) return;
                     let namaMenu = bersihkan; let qtyMenu = 1;
-                    let cocokQty = bersihkan.match(/(.+)\s\((\d+)x\)/);
+                    let cocokQty = bersihkan.match(/(.+?)\s*\((\d+)x\)/);
                     if(cocokQty) { namaMenu = cocokQty[1].trim(); qtyMenu = parseInt(cocokQty[2], 10); }
 
                     let namaMenuBersih = namaMenu.replace(/\\'/g, "'").trim();
@@ -1127,194 +1129,193 @@
         }
 
         // ==================== LAPORAN BULANAN (PERBAIKAN) ====================
-function prosesLaporanBulanan() {
-    const filterBulanInput = document.getElementById("filter-bulan");
-    if(!filterBulanInput) return;
+        function prosesLaporanBulanan() {
+            const filterBulanInput = document.getElementById("filter-bulan");
+            if(!filterBulanInput) return;
 
-    let bulanTerpilih = "";
-    let tahunTerpilih = "";
+            let bulanTerpilih = "";
+            let tahunTerpilih = "";
 
-    if (filterBulanInput._flatpickr && filterBulanInput._flatpickr.selectedDates.length > 0) {
-        const d = filterBulanInput._flatpickr.selectedDates[0];
-        tahunTerpilih = d.getFullYear();
-        bulanTerpilih = String(d.getMonth() + 1).padStart(2, '0');
-    } else {
-        return;
-    }
-
-    // Update label bulan
-    const bulanNama = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 
-                      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
-    const label = document.getElementById('bulan-label');
-    if (label) label.innerText = `${bulanNama[parseInt(bulanTerpilih)-1]} ${tahunTerpilih}`;
-
-    // Filter transaksi berdasarkan bulan
-    let transaksiBulan = dataTransaksiSemua.filter(tx => {
-        if(!tx.tanggal) return false;
-        let txDate = new Date(tx.tanggal);
-        if(isNaN(txDate.getTime())) return false;
-        return txDate.getFullYear() === parseInt(tahunTerpilih) && 
-               (txDate.getMonth() + 1) === parseInt(bulanTerpilih);
-    });
-
-    // Rekap per hari
-    let rekapHari = {};
-    let totalTunaiBulan = 0;
-    let totalQrisBulan = 0;
-    let totalTransaksi = 0;
-
-    // Rekap per kategori
-    let rekapKategori = {
-        utama: {},
-        lauk: {},
-        sembako: {}
-    };
-
-    transaksiBulan.forEach(tx => {
-        let txDate = new Date(tx.tanggal);
-        let tglKey = txDate.toISOString().split('T')[0];
-        let tglDisplay = txDate.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
-        
-        if (!rekapHari[tglKey]) {
-            rekapHari[tglKey] = { tanggal: tglDisplay, tunai: 0, qris: 0, total: 0, count: 0 };
-        }
-
-        let metode = tx.metode ? tx.metode.toString().toUpperCase() : "TUNAI";
-        let nominal = Number(tx.total) || 0;
-
-        // AKUMULASI PER METODE PEMBAYARAN
-        if (metode === "QRIS") {
-            rekapHari[tglKey].qris += nominal;
-            totalQrisBulan += nominal;
-        } else {
-            rekapHari[tglKey].tunai += nominal;
-            totalTunaiBulan += nominal;
-        }
-        rekapHari[tglKey].total += nominal;
-        rekapHari[tglKey].count += 1;
-        totalTransaksi += 1;
-
-        // PARSE ITEM UNTUK REKAP KATEGORI
-        let itemRaw = tx.item ? tx.item.toString() : "";
-        let bagianItem = itemRaw.split(",");
-        
-        bagianItem.forEach(bag => {
-            let bersihkan = bag.trim();
-            if (!bersihkan) return;
-            
-            // Ekstrak nama dan qty dari format "Nama Menu (Qtyx)"
-            let namaMenu = bersihkan;
-            let qtyMenu = 1;
-            let cocokQty = bersihkan.match(/(.+?)\s*\((\d+)x\)/);
-            if (cocokQty) {
-                namaMenu = cocokQty[1].trim();
-                qtyMenu = parseInt(cocokQty[2], 10);
-            }
-
-            // Cari menu di itemMenu
-            let matchMenu = itemMenu.find(m => m.nama.toLowerCase().trim() === namaMenu.toLowerCase().trim());
-            let kategori = matchMenu ? (matchMenu.kategori || "utama") : "utama";
-            kategori = kategori.toString().toLowerCase().trim();
-
-            // Tentukan target rekap
-            let targetRekap = null;
-            if (kategori === "sembako") {
-                targetRekap = rekapKategori.sembako;
-            } else if (kategori === "lauk") {
-                targetRekap = rekapKategori.lauk;
+            if (filterBulanInput._flatpickr && filterBulanInput._flatpickr.selectedDates.length > 0) {
+                const d = filterBulanInput._flatpickr.selectedDates[0];
+                tahunTerpilih = d.getFullYear();
+                bulanTerpilih = String(d.getMonth() + 1).padStart(2, '0');
             } else {
-                targetRekap = rekapKategori.utama;
+                return;
             }
 
-            // Akumulasi ke kategori
-            if (targetRekap) {
-                if (!targetRekap[namaMenu]) {
-                    targetRekap[namaMenu] = { 
-                        qty: 0, 
-                        nominal: 0,
-                        nama: namaMenu
-                    };
+            // Update label bulan
+            const bulanNama = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 
+                              'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+            const label = document.getElementById('bulan-label');
+            if (label) label.innerText = `${bulanNama[parseInt(bulanTerpilih)-1]} ${tahunTerpilih}`;
+
+            // Filter transaksi berdasarkan bulan
+            let transaksiBulan = dataTransaksiSemua.filter(tx => {
+                if(!tx.tanggal) return false;
+                let txDate = new Date(tx.tanggal);
+                if(isNaN(txDate.getTime())) return false;
+                return txDate.getFullYear() === parseInt(tahunTerpilih) && 
+                       (txDate.getMonth() + 1) === parseInt(bulanTerpilih);
+            });
+
+            // Rekap per hari
+            let rekapHari = {};
+            let totalTunaiBulan = 0;
+            let totalQrisBulan = 0;
+            let totalTransaksi = 0;
+
+            // Rekap per kategori
+            let rekapKategori = {
+                utama: {},
+                lauk: {},
+                sembako: {}
+            };
+
+            transaksiBulan.forEach(tx => {
+                let txDate = new Date(tx.tanggal);
+                let tglKey = txDate.toISOString().split('T')[0];
+                let tglDisplay = txDate.toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+                
+                if (!rekapHari[tglKey]) {
+                    rekapHari[tglKey] = { tanggal: tglDisplay, tunai: 0, qris: 0, total: 0, count: 0 };
                 }
-                targetRekap[namaMenu].qty += qtyMenu;
-                // PERBAIKAN: Gunakan nominal total transaksi dibagi jumlah item
-                // atau gunakan harga per item dari matchMenu
-                if (matchMenu) {
-                    targetRekap[namaMenu].nominal += qtyMenu * matchMenu.harga;
+
+                let metode = tx.metode ? tx.metode.toString().toUpperCase() : "TUNAI";
+                let nominal = Number(tx.total) || 0;
+
+                // AKUMULASI PER METODE PEMBAYARAN
+                if (metode === "QRIS") {
+                    rekapHari[tglKey].qris += nominal;
+                    totalQrisBulan += nominal;
                 } else {
-                    // Jika tidak ditemukan di menu, gunakan proporsi
-                    targetRekap[namaMenu].nominal += (nominal / bagianItem.length);
+                    rekapHari[tglKey].tunai += nominal;
+                    totalTunaiBulan += nominal;
                 }
+                rekapHari[tglKey].total += nominal;
+                rekapHari[tglKey].count += 1;
+                totalTransaksi += 1;
+
+                // PARSE ITEM UNTUK REKAP KATEGORI
+                let itemRaw = tx.item ? tx.item.toString() : "";
+                let bagianItem = itemRaw.split(",");
+                
+                bagianItem.forEach(bag => {
+                    let bersihkan = bag.trim();
+                    if (!bersihkan) return;
+                    
+                    // Ekstrak nama dan qty dari format "Nama Menu (Qtyx)"
+                    let namaMenu = bersihkan;
+                    let qtyMenu = 1;
+                    let cocokQty = bersihkan.match(/(.+?)\s*\((\d+)x\)/);
+                    if (cocokQty) {
+                        namaMenu = cocokQty[1].trim();
+                        qtyMenu = parseInt(cocokQty[2], 10);
+                    }
+
+                    // Cari menu di itemMenu (case insensitive)
+                    let matchMenu = itemMenu.find(m => m.nama.toLowerCase().trim() === namaMenu.toLowerCase().trim());
+                    let kategori = matchMenu ? (matchMenu.kategori || "utama") : "utama";
+                    kategori = kategori.toString().toLowerCase().trim();
+
+                    // Tentukan target rekap
+                    let targetRekap = null;
+                    if (kategori === "sembako") {
+                        targetRekap = rekapKategori.sembako;
+                    } else if (kategori === "lauk") {
+                        targetRekap = rekapKategori.lauk;
+                    } else {
+                        targetRekap = rekapKategori.utama;
+                    }
+
+                    // Akumulasi ke kategori
+                    if (targetRekap) {
+                        if (!targetRekap[namaMenu]) {
+                            targetRekap[namaMenu] = { 
+                                qty: 0, 
+                                nominal: 0
+                            };
+                        }
+                        targetRekap[namaMenu].qty += qtyMenu;
+                        // Gunakan harga dari matchMenu atau proporsi
+                        if (matchMenu) {
+                            targetRekap[namaMenu].nominal += qtyMenu * matchMenu.harga;
+                        } else {
+                            // Jika tidak ditemukan, gunakan proporsi dari total
+                            let itemCount = bagianItem.length;
+                            targetRekap[namaMenu].nominal += (nominal / itemCount);
+                        }
+                    }
+                });
+            });
+
+            // Render tabel per hari
+            let htmlTabel = "";
+            let sortedDates = Object.keys(rekapHari).sort();
+            sortedDates.forEach(key => {
+                let r = rekapHari[key];
+                htmlTabel += `<tr class="border-b border-slate-100 hover:bg-slate-50">
+                    <td class="p-2.5 text-slate-700">${r.tanggal}</td>
+                    <td class="p-2.5 text-right text-emerald-600">Rp ${r.tunai.toLocaleString('id-ID')}</td>
+                    <td class="p-2.5 text-right text-sky-600">Rp ${r.qris.toLocaleString('id-ID')}</td>
+                    <td class="p-2.5 text-right text-amber-600 font-black">Rp ${r.total.toLocaleString('id-ID')}</td>
+                    <td class="p-2.5 text-center text-slate-500">${r.count} transaksi</td>
+                </tr>`;
+            });
+
+            const tbody = document.getElementById('body-tabel-bulanan');
+            if (tbody) {
+                tbody.innerHTML = htmlTabel || `<tr><td colspan="5" class="p-4 text-center text-slate-400 italic text-[11px]">Tidak ada transaksi di bulan ini</td></tr>`;
             }
-        });
-    });
 
-    // Render tabel per hari
-    let htmlTabel = "";
-    let sortedDates = Object.keys(rekapHari).sort();
-    sortedDates.forEach(key => {
-        let r = rekapHari[key];
-        htmlTabel += `<tr class="border-b border-slate-100 hover:bg-slate-50">
-            <td class="p-2.5 text-slate-700">${r.tanggal}</td>
-            <td class="p-2.5 text-right text-emerald-600">Rp ${r.tunai.toLocaleString('id-ID')}</td>
-            <td class="p-2.5 text-right text-sky-600">Rp ${r.qris.toLocaleString('id-ID')}</td>
-            <td class="p-2.5 text-right text-amber-600 font-black">Rp ${r.total.toLocaleString('id-ID')}</td>
-            <td class="p-2.5 text-center text-slate-500">${r.count} transaksi</td>
-        </tr>`;
-    });
+            // Update ringkasan bulanan
+            setTeks('bulan-tunai', 'Rp ' + totalTunaiBulan.toLocaleString('id-ID'));
+            setTeks('bulan-qris', 'Rp ' + totalQrisBulan.toLocaleString('id-ID'));
+            setTeks('bulan-total', 'Rp ' + (totalTunaiBulan + totalQrisBulan).toLocaleString('id-ID'));
 
-    const tbody = document.getElementById('body-tabel-bulanan');
-    if (tbody) {
-        tbody.innerHTML = htmlTabel || `<tr><td colspan="5" class="p-4 text-center text-slate-400 italic text-[11px]">Tidak ada transaksi di bulan ini</td></tr>`;
-    }
+            // Render rekap per kategori
+            renderRekapKategori('bulan-rekap-utama', rekapKategori.utama);
+            renderRekapKategori('bulan-rekap-lauk', rekapKategori.lauk);
+            renderRekapKategori('bulan-rekap-sembako', rekapKategori.sembako);
+        }
 
-    // Update ringkasan bulanan
-    setTeks('bulan-tunai', 'Rp ' + totalTunaiBulan.toLocaleString('id-ID'));
-    setTeks('bulan-qris', 'Rp ' + totalQrisBulan.toLocaleString('id-ID'));
-    setTeks('bulan-total', 'Rp ' + (totalTunaiBulan + totalQrisBulan).toLocaleString('id-ID'));
+        function renderRekapKategori(elementId, data) {
+            const container = document.getElementById(elementId);
+            if (!container) return;
 
-    // Render rekap per kategori
-    renderRekapKategori('bulan-rekap-utama', rekapKategori.utama);
-    renderRekapKategori('bulan-rekap-lauk', rekapKategori.lauk);
-    renderRekapKategori('bulan-rekap-sembako', rekapKategori.sembako);
-}
+            let html = '';
+            let totalQty = 0;
+            let totalNominal = 0;
 
-function renderRekapKategori(elementId, data) {
-    const container = document.getElementById(elementId);
-    if (!container) return;
+            // Urutkan berdasarkan nominal tertinggi
+            let sortedKeys = Object.keys(data).sort((a, b) => data[b].nominal - data[a].nominal);
 
-    let html = '';
-    let totalQty = 0;
-    let totalNominal = 0;
+            sortedKeys.forEach(key => {
+                let item = data[key];
+                totalQty += item.qty;
+                totalNominal += item.nominal;
+                html += `<div class="flex justify-between items-center py-1.5 border-b border-slate-50">
+                    <span class="font-bold text-slate-700 text-[11px]">${key}</span>
+                    <div class="text-right">
+                        <span class="text-amber-600 font-black">${item.qty}x</span>
+                        <span class="text-slate-400 ml-2 text-[10px]">Rp ${Math.round(item.nominal).toLocaleString('id-ID')}</span>
+                    </div>
+                </div>`;
+            });
 
-    // Urutkan berdasarkan nominal tertinggi
-    let sortedKeys = Object.keys(data).sort((a, b) => data[b].nominal - data[a].nominal);
-
-    sortedKeys.forEach(key => {
-        let item = data[key];
-        totalQty += item.qty;
-        totalNominal += item.nominal;
-        html += `<div class="flex justify-between items-center py-1.5 border-b border-slate-50">
-            <span class="font-bold text-slate-700 text-[11px]">${key}</span>
-            <div class="text-right">
-                <span class="text-amber-600 font-black">${item.qty}x</span>
-                <span class="text-slate-400 ml-2 text-[10px]">Rp ${Math.round(item.nominal).toLocaleString('id-ID')}</span>
-            </div>
-        </div>`;
-    });
-
-    if (html) {
-        html += `<div class="flex justify-between items-center pt-2 mt-1 border-t-2 border-amber-200 font-black text-xs">
-            <span class="text-slate-600">TOTAL</span>
-            <div class="text-right">
-                <span class="text-amber-600">${totalQty}x</span>
-                <span class="text-amber-600 ml-2">Rp ${Math.round(totalNominal).toLocaleString('id-ID')}</span>
-            </div>
-        </div>`;
-        container.innerHTML = html;
-    } else {
-        container.innerHTML = '<p class="text-slate-400 italic text-center py-2 text-[11px]">Tidak ada data</p>';
-    }
-}
+            if (html) {
+                html += `<div class="flex justify-between items-center pt-2 mt-1 border-t-2 border-amber-200 font-black text-xs">
+                    <span class="text-slate-600">TOTAL</span>
+                    <div class="text-right">
+                        <span class="text-amber-600">${totalQty}x</span>
+                        <span class="text-amber-600 ml-2">Rp ${Math.round(totalNominal).toLocaleString('id-ID')}</span>
+                    </div>
+                </div>`;
+                container.innerHTML = html;
+            } else {
+                container.innerHTML = '<p class="text-slate-400 italic text-center py-2 text-[11px]">Tidak ada data</p>';
+            }
+        }
 
         function bayarSekarang() {
             // Cek apakah ada item habis yang terpilih
